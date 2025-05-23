@@ -1,9 +1,21 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ContentItem, ContentType } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import mermaid from 'mermaid';
+import Prism from 'prismjs';
+
+// Import Prism CSS and additional languages
+import 'prismjs/themes/prism-tomorrow.css';
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-json';
+import 'prismjs/components/prism-bash';
+import 'prismjs/components/prism-yaml';
 
 interface ContentViewerProps {
   contentItem: ContentItem;
@@ -11,18 +23,52 @@ interface ContentViewerProps {
 
 export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
   const [mermaidLoading, setMermaidLoading] = useState(contentItem.type === 'mermaid');
+  const mermaidRef = useRef<HTMLDivElement>(null);
 
+  // Initialize Mermaid
   useEffect(() => {
-    if (contentItem.type === 'mermaid') {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'default',
+      securityLevel: 'loose',
+      fontFamily: 'Inter, system-ui, sans-serif',
+    });
+  }, []);
+
+  // Render Mermaid diagrams
+  useEffect(() => {
+    if (contentItem.type === 'mermaid' && mermaidRef.current) {
       setMermaidLoading(true);
       
-      // In a real app, you would use the mermaid library to render the diagram
-      // This is a mock implementation to simulate rendering
-      const timer = setTimeout(() => {
-        setMermaidLoading(false);
-      }, 1000);
-      
-      return () => clearTimeout(timer);
+      const renderDiagram = async () => {
+        try {
+          const { svg } = await mermaid.render(`mermaid-${contentItem.id}`, contentItem.content);
+          if (mermaidRef.current) {
+            mermaidRef.current.innerHTML = svg;
+          }
+        } catch (error) {
+          console.error('Mermaid rendering error:', error);
+          if (mermaidRef.current) {
+            mermaidRef.current.innerHTML = `
+              <div class="text-red-500 p-4 border border-red-200 rounded bg-red-50">
+                <p class="font-medium">Diagram rendering failed</p>
+                <p class="text-sm mt-1">There was an error rendering this Mermaid diagram.</p>
+              </div>
+            `;
+          }
+        } finally {
+          setMermaidLoading(false);
+        }
+      };
+
+      renderDiagram();
+    }
+  }, [contentItem]);
+
+  // Highlight code blocks after markdown renders
+  useEffect(() => {
+    if (contentItem.type === 'markdown') {
+      Prism.highlightAll();
     }
   }, [contentItem]);
 
@@ -47,54 +93,199 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
     }
   };
 
+  const renderPostmanCollection = (jsonString: string) => {
+    try {
+      const collection = JSON.parse(jsonString);
+      
+      return (
+        <div className="space-y-6">
+          {/* Collection Info */}
+          <div className="border-l-4 border-purple-500 pl-4">
+            <h3 className="text-lg font-semibold">{collection.info?.name}</h3>
+            <p className="text-gray-600">{collection.info?.description}</p>
+            {collection.info?.version && (
+              <Badge variant="outline" className="mt-2">v{collection.info.version}</Badge>
+            )}
+          </div>
+
+          {/* Variables */}
+          {collection.variable && collection.variable.length > 0 && (
+            <div>
+              <h4 className="font-medium mb-2">Variables</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {collection.variable.map((variable: any, index: number) => (
+                  <div key={index} className="bg-gray-50 p-2 rounded text-sm">
+                    <span className="font-mono text-purple-600">{{${variable.key}}}</span>
+                    {variable.value && <span className="ml-2 text-gray-600">= {variable.value}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Requests */}
+          <div>
+            <h4 className="font-medium mb-3">Requests ({collection.item?.length || 0})</h4>
+            <div className="space-y-3">
+              {collection.item?.map((item: any, index: number) => (
+                <div key={index} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <h5 className="font-medium">{item.name}</h5>
+                    <Badge 
+                      variant={getMethodVariant(item.request?.method)}
+                      className="text-xs"
+                    >
+                      {item.request?.method || 'GET'}
+                    </Badge>
+                  </div>
+                  
+                  {item.request?.url && (
+                    <div className="font-mono text-sm bg-gray-100 p-2 rounded mb-2">
+                      {typeof item.request.url === 'string' 
+                        ? item.request.url 
+                        : item.request.url.raw || item.request.url.host?.join('.') + item.request.url.path?.join('/')
+                      }
+                    </div>
+                  )}
+                  
+                  {item.request?.description && (
+                    <p className="text-sm text-gray-600 mb-2">{item.request.description}</p>
+                  )}
+                  
+                  {/* Headers */}
+                  {item.request?.header && item.request.header.length > 0 && (
+                    <div className="mt-2">
+                      <span className="text-xs font-medium text-gray-500">Headers:</span>
+                      <div className="mt-1 space-y-1">
+                        {item.request.header.map((header: any, headerIndex: number) => (
+                          <div key={headerIndex} className="text-xs font-mono bg-blue-50 p-1 rounded">
+                            {header.key}: {header.value}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Body */}
+                  {item.request?.body && (
+                    <div className="mt-2">
+                      <span className="text-xs font-medium text-gray-500">Body:</span>
+                      <div className="mt-1 text-xs font-mono bg-yellow-50 p-2 rounded max-h-20 overflow-y-auto">
+                        {item.request.body.raw || JSON.stringify(item.request.body, null, 2)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    } catch (error) {
+      console.error('Failed to parse Postman collection:', error);
+      return (
+        <div className="text-red-500 p-4 border border-red-200 rounded bg-red-50">
+          <p className="font-medium">Invalid Postman Collection</p>
+          <p className="text-sm mt-1">The JSON format is invalid or corrupted.</p>
+        </div>
+      );
+    }
+  };
+
+  const getMethodVariant = (method: string): "default" | "secondary" | "destructive" | "outline" => {
+    switch (method?.toUpperCase()) {
+      case 'GET':
+        return 'default';
+      case 'POST':
+        return 'secondary';
+      case 'PUT':
+        return 'outline';
+      case 'DELETE':
+        return 'destructive';
+      default:
+        return 'outline';
+    }
+  };
+
   const renderContent = () => {
     switch (contentItem.type) {
       case 'markdown':
         return (
-          <div className="markdown-content">
-            <div dangerouslySetInnerHTML={{ __html: convertMarkdownToHtml(contentItem.content) }} />
+          <div className="prose prose-sm max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                code({ node, inline, className, children, ...props }) {
+                  const match = /language-(\w+)/.exec(className || '');
+                  return !inline && match ? (
+                    <pre className={className} {...props}>
+                      <code className={className}>
+                        {children}
+                      </code>
+                    </pre>
+                  ) : (
+                    <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono" {...props}>
+                      {children}
+                    </code>
+                  );
+                },
+                table: ({ children }) => (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border-collapse border border-gray-300">
+                      {children}
+                    </table>
+                  </div>
+                ),
+                th: ({ children }) => (
+                  <th className="border border-gray-300 px-4 py-2 bg-gray-50 font-medium text-left">
+                    {children}
+                  </th>
+                ),
+                td: ({ children }) => (
+                  <td className="border border-gray-300 px-4 py-2">
+                    {children}
+                  </td>
+                ),
+              }}
+            >
+              {contentItem.content}
+            </ReactMarkdown>
           </div>
         );
       
       case 'mermaid':
         return (
-          <div className="mermaid-diagram">
+          <div className="mermaid-container">
             {mermaidLoading ? (
               <div className="flex justify-center items-center h-40">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
               </div>
             ) : (
-              <>
-                <div className="text-sm text-gray-500 mb-2">Mermaid Diagram Preview:</div>
-                <div className="border p-4 rounded bg-gray-50">
-                  <pre className="text-sm overflow-auto">{contentItem.content}</pre>
-                </div>
-                <div className="mt-4 text-center text-sm text-gray-500">
-                  In a real implementation, the diagram would be rendered here using the Mermaid library
-                </div>
-              </>
+              <div className="text-center">
+                <div 
+                  ref={mermaidRef}
+                  className="inline-block max-w-full overflow-x-auto"
+                />
+              </div>
             )}
           </div>
         );
       
       case 'postman':
         return (
-          <Tabs defaultValue="preview">
+          <Tabs defaultValue="preview" className="w-full">
             <TabsList className="mb-4">
               <TabsTrigger value="preview">Preview</TabsTrigger>
-              <TabsTrigger value="json">JSON</TabsTrigger>
+              <TabsTrigger value="json">Raw JSON</TabsTrigger>
             </TabsList>
             <TabsContent value="preview">
-              <div className="border p-4 rounded bg-gray-50">
-                <h3 className="text-lg font-medium mb-2">Postman Collection</h3>
-                <div>
-                  {tryParsePostman(contentItem.content)}
-                </div>
-              </div>
+              {renderPostmanCollection(contentItem.content)}
             </TabsContent>
             <TabsContent value="json">
-              <pre className="border p-4 rounded bg-gray-50 overflow-auto max-h-96 text-sm whitespace-pre-wrap">
-                {JSON.stringify(JSON.parse(contentItem.content), null, 2)}
+              <pre className="border p-4 rounded bg-gray-50 overflow-auto max-h-96 text-sm">
+                <code className="language-json">
+                  {JSON.stringify(JSON.parse(contentItem.content), null, 2)}
+                </code>
               </pre>
             </TabsContent>
           </Tabs>
@@ -102,59 +293,6 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
       
       default:
         return <div>Unsupported content type</div>;
-    }
-  };
-
-  // Helper function to convert markdown to HTML (simplified)
-  const convertMarkdownToHtml = (markdown: string) => {
-    let html = markdown
-      // Headers
-      .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-      .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-      .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-      // Bold
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      // Italic
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      // Code blocks
-      .replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>')
-      // Lists
-      .replace(/^\- (.*$)/gm, '<li>$1</li>')
-      .replace(/(<\/li>)(?![\n\r]<li>)/g, '$1</ul>')
-      .replace(/(<li>)(?![\n\r]<\/li>)/g, '<ul>$1');
-    
-    // Replace newlines with <br/> tags
-    html = html.replace(/\n/g, '<br/>');
-    
-    return html;
-  };
-
-  // Helper function to parse and display Postman collection preview
-  const tryParsePostman = (jsonString: string) => {
-    try {
-      const postmanData = JSON.parse(jsonString);
-      
-      return (
-        <div>
-          <p className="font-medium">Name: {postmanData.info?.name}</p>
-          <p className="text-gray-600 mb-4">{postmanData.info?.description}</p>
-          
-          <h4 className="font-medium mt-2">Requests:</h4>
-          <ul className="list-disc pl-6 mt-2">
-            {postmanData.item?.map((item: any, index: number) => (
-              <li key={index} className="mb-2">
-                <span className="font-medium">{item.name}</span>
-                <div className="text-sm">
-                  {item.request?.method} {item.request?.url}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      );
-    } catch (error) {
-      console.error('Failed to parse Postman JSON:', error);
-      return <div>Invalid Postman Collection format</div>;
     }
   };
 
