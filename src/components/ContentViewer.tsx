@@ -115,7 +115,7 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {collection.variable.map((variable: any, index: number) => (
                   <div key={index} className="bg-gray-50 p-2 rounded text-sm">
-                    <span className="font-mono text-purple-600">{{${variable.key}}}</span>
+                    <span className="font-mono text-purple-600">{variable.key}</span>
                     {variable.value && <span className="ml-2 text-gray-600">= {variable.value}</span>}
                   </div>
                 ))}
