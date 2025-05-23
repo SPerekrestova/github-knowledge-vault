@@ -1,15 +1,25 @@
 
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { RefreshCw } from 'lucide-react';
 import { ContentType } from '@/types';
 
 interface FilterBarProps {
   onSearch: (query: string) => void;
+  onRefresh: () => void;
   activeRepoName: string | null;
   activeContentType: ContentType | null;
+  isRefreshing?: boolean;
 }
 
-export const FilterBar = ({ onSearch, activeRepoName, activeContentType }: FilterBarProps) => {
+export const FilterBar = ({ 
+  onSearch, 
+  onRefresh, 
+  activeRepoName, 
+  activeContentType,
+  isRefreshing = false 
+}: FilterBarProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Debounce search input
@@ -49,14 +59,26 @@ export const FilterBar = ({ onSearch, activeRepoName, activeContentType }: Filte
           )}
         </h2>
       </div>
-      <div className="w-full md:w-1/3">
-        <Input
-          type="search"
-          placeholder="Search documentation..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full"
-        />
+      <div className="flex items-center gap-4 w-full md:w-auto">
+        <Button
+          onClick={onRefresh}
+          variant="outline"
+          size="sm"
+          disabled={isRefreshing}
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+        <div className="w-full md:w-80">
+          <Input
+            type="search"
+            placeholder="Search documentation..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full"
+          />
+        </div>
       </div>
     </div>
   );

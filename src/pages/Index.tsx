@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { ContentType, Repository } from '@/types';
 import { Sidebar } from '@/components/Sidebar';
@@ -14,16 +13,30 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedContentId, setSelectedContentId] = useState<string | null>(null);
   
-  const { repositories } = useRepos();
+  const { repositories, refreshing: reposRefreshing, refresh: refreshRepos } = useRepos();
   const { 
     content, 
     loading: contentLoading,
-    updateFilter 
+    refreshing: contentRefreshing,
+    updateFilter,
+    refresh: refreshContent
   } = useContent({
     repoId: activeRepoId,
     contentType: activeContentType,
     searchQuery
   });
+  
+  // Combined refresh state
+  const isRefreshing = reposRefreshing || contentRefreshing;
+  
+  // Handle refresh - refresh both repos and content
+  const handleRefresh = async () => {
+    console.log('Refreshing data from GitHub...');
+    await Promise.all([
+      refreshRepos(),
+      refreshContent()
+    ]);
+  };
   
   // Get active repository name
   const activeRepoName = useMemo(() => {
@@ -101,8 +114,10 @@ const Index = () => {
         {/* Filter Bar */}
         <FilterBar
           onSearch={handleSearch}
+          onRefresh={handleRefresh}
           activeRepoName={activeRepoName}
           activeContentType={activeContentType}
+          isRefreshing={isRefreshing}
         />
         
         {/* Content Area */}

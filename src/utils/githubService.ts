@@ -1,6 +1,22 @@
 
 import { Repository, ContentItem, ContentType } from '@/types';
 
+// TODO: Add GitHub API integration here
+// TODO: Store GitHub Personal Access Token or GitHub App credentials
+// TODO: Replace mock data with actual GitHub API calls
+// TODO: Add error handling for GitHub API rate limits
+// TODO: Add authentication for private repositories
+
+// GitHub API configuration - TODO: Move to environment variables
+const GITHUB_CONFIG = {
+  // TODO: Add your GitHub organization name
+  organization: 'your-organization-name',
+  // TODO: Add GitHub API base URL
+  apiBaseUrl: 'https://api.github.com',
+  // TODO: Add GitHub token (should be stored securely)
+  token: 'your-github-token-here'
+};
+
 // This is a mock service. In a real implementation, you would connect to GitHub API
 export const githubService = {
   // Mock data for demo purposes
@@ -64,7 +80,6 @@ export const githubService = {
       content: '# Payment Integration\n\nGuide to integrating with the payment service.\n\n## Supported Payment Methods\n\n- Credit Cards\n- PayPal\n- Bank Transfers\n\n## Webhooks\n\nPayment events are sent to configured webhook endpoints.',
       lastUpdated: '2023-07-10',
     },
-    // Mermaid diagrams
     {
       id: 'd1',
       repoId: '1',
@@ -83,7 +98,6 @@ export const githubService = {
       content: 'sequenceDiagram\n    participant User\n    participant API\n    participant Auth\n    participant Database\n    User->>API: Login Request\n    API->>Auth: Validate Credentials\n    Auth->>Database: Check User\n    Database-->>Auth: User Data\n    Auth-->>API: Auth Token\n    API-->>User: Response with Token',
       lastUpdated: '2023-06-25',
     },
-    // Postman collections
     {
       id: 'p1',
       repoId: '1',
@@ -104,20 +118,49 @@ export const githubService = {
     },
   ],
 
-  // Get repositories
+  // TODO: Implement real GitHub API calls
+  // TODO: Add function to fetch repositories from GitHub organization
+  // Example: GET /orgs/{org}/repos
   getRepositories: async (): Promise<Repository[]> => {
-    // In a real implementation, this would fetch from GitHub API
+    // TODO: Replace with actual GitHub API call
+    // const response = await fetch(`${GITHUB_CONFIG.apiBaseUrl}/orgs/${GITHUB_CONFIG.organization}/repos`, {
+    //   headers: {
+    //     'Authorization': `Bearer ${GITHUB_CONFIG.token}`,
+    //     'Accept': 'application/vnd.github.v3+json'
+    //   }
+    // });
+    // const repos = await response.json();
+    // TODO: Filter repos that have docs folder
+    // TODO: Transform GitHub repo data to Repository type
+    
     return new Promise((resolve) => {
       setTimeout(() => {
+        console.log('Refreshing repositories from GitHub...');
         resolve(githubService.mockRepositories);
       }, 800);
     });
   },
 
-  // Get content for a specific repository
+  // TODO: Implement function to check if repo has docs folder
+  // Example: GET /repos/{owner}/{repo}/contents/docs
+  checkDocsFolderExists: async (repoName: string): Promise<boolean> => {
+    // TODO: Check if docs folder exists in repository
+    return true;
+  },
+
+  // TODO: Implement function to fetch content from docs folder
+  // Example: GET /repos/{owner}/{repo}/contents/docs
   getRepoContent: async (repoId: string): Promise<ContentItem[]> => {
+    // TODO: Get repository name from repoId
+    // TODO: Fetch docs folder contents from GitHub
+    // TODO: Parse markdown files (.md)
+    // TODO: Parse mermaid diagrams (.mmd)
+    // TODO: Parse postman collections (.json)
+    // TODO: Transform GitHub file data to ContentItem type
+    
     return new Promise((resolve) => {
       setTimeout(() => {
+        console.log(`Refreshing content for repo ${repoId} from GitHub...`);
         const filteredContent = githubService.mockContent.filter(item => item.repoId === repoId);
         resolve(filteredContent);
       }, 600);
@@ -128,6 +171,7 @@ export const githubService = {
   getAllContent: async (): Promise<ContentItem[]> => {
     return new Promise((resolve) => {
       setTimeout(() => {
+        console.log('Refreshing all content from GitHub...');
         resolve(githubService.mockContent);
       }, 800);
     });
@@ -151,5 +195,13 @@ export const githubService = {
         resolve(foundContent);
       }, 400);
     });
+  },
+
+  // TODO: Add refresh functionality to clear cache and fetch fresh data
+  refreshAllData: async (): Promise<void> => {
+    // TODO: Clear any cached data
+    // TODO: Fetch fresh repositories
+    // TODO: Fetch fresh content for all repositories
+    console.log('Refreshing all data from GitHub...');
   }
 };
