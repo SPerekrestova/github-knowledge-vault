@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import mermaid from 'mermaid';
 import Prism from 'prismjs';
+import { ReactElement } from 'react';
 
 // Import Prism CSS and additional languages
 import 'prismjs/themes/prism-tomorrow.css';
@@ -21,11 +22,17 @@ interface ContentViewerProps {
 }
 
 let mermaidInitialized = false;
+let mermaidDiagramCounter = 0;
 
 export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
   const [mermaidLoading, setMermaidLoading] = useState(contentItem.type === 'mermaid');
   const [mermaidError, setMermaidError] = useState<string | null>(null);
   const mermaidRef = useRef<HTMLDivElement>(null);
+  // Generate a unique, CSS-safe ID for each diagram instance
+  const [uniqueId] = useState(() => {
+    mermaidDiagramCounter += 1;
+    return `mermaid_diagram_${mermaidDiagramCounter}`;
+  });
 
   // Initialize Mermaid only once
   useEffect(() => {
@@ -60,61 +67,72 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
   // Render Mermaid diagrams
   useEffect(() => {
     if (contentItem.type === 'mermaid' && mermaidRef.current) {
+      let cancelled = false;
       const renderDiagram = async () => {
         try {
           setMermaidLoading(true);
           setMermaidError(null);
-
-          // Validate content
           if (!contentItem.content) {
-              console.error('No content provided');
+            console.error('No content provided');
           }
-
           const content = contentItem.content.trim();
-
-          // Clear previous content
           if (mermaidRef.current) {
             mermaidRef.current.innerHTML = '';
           }
-
-          // Create pre element and use mermaid.run
-          const pre = document.createElement('pre');
-          pre.className = 'mermaid';
-          pre.textContent = content;
-
-          if (mermaidRef.current) {
-            mermaidRef.current.appendChild(pre);
-
-            // Run mermaid
-            await mermaid.run({
-              nodes: [pre],
-              suppressErrors: false
-            });
-
-            setMermaidLoading(false);
-          }
-
+          // Use requestAnimationFrame to ensure DOM is ready
+          requestAnimationFrame(async () => {
+            try {
+              const id = `mermaid-diagram-${uniqueId}`;
+              const { svg } = await mermaid.render(id, content);
+              if (!cancelled && mermaidRef.current) {
+                mermaidRef.current.innerHTML = svg;
+                // Make SVG responsive
+                const svgEl = mermaidRef.current.querySelector('svg');
+                if (svgEl) {
+                  svgEl.removeAttribute('width');
+                  svgEl.removeAttribute('height');
+                  svgEl.style.width = '100%';
+                  svgEl.style.height = 'auto';
+                  svgEl.style.maxWidth = '100%';
+                  svgEl.style.maxHeight = '400px';
+                  svgEl.style.display = 'block';
+                }
+                setMermaidLoading(false);
+              }
+            } catch (error) {
+              if (!cancelled) {
+                console.error('Mermaid rendering error:', error);
+                setMermaidError(error.message || 'Failed to render diagram');
+                setMermaidLoading(false);
+                if (mermaidRef.current) {
+                  mermaidRef.current.innerHTML = `
+                    <div class=\"text-red-500 p-4 border border-red-200 rounded bg-red-50\">\n                      <p class=\"font-medium\">Diagram rendering failed</p>\n                      <p class=\"text-sm mt-1\">${error.message}</p>\n                      <pre class=\"mt-2 text-xs bg-gray-100 p-2 rounded overflow-x-auto\">${contentItem.content}</pre>\n                    </div>\n                  `;
+                }
+              }
+            }
+          });
         } catch (error) {
-          console.error('Mermaid rendering error:', error);
-          setMermaidError(error.message || 'Failed to render diagram');
-          setMermaidLoading(false);
-
-          if (mermaidRef.current) {
-            mermaidRef.current.innerHTML = `
-              <div class="text-red-500 p-4 border border-red-200 rounded bg-red-50">
-                <p class="font-medium">Diagram rendering failed</p>
-                <p class="text-sm mt-1">${error.message}</p>
-                <pre class="mt-2 text-xs bg-gray-100 p-2 rounded overflow-x-auto">${contentItem.content}</pre>
-              </div>
-            `;
+          if (!cancelled) {
+            console.error('Mermaid rendering error:', error);
+            setMermaidError(error.message || 'Failed to render diagram');
+            setMermaidLoading(false);
+            if (mermaidRef.current) {
+              mermaidRef.current.innerHTML = `
+                <div class=\"text-red-500 p-4 border border-red-200 rounded bg-red-50\">\n                  <p class=\"font-medium\">Diagram rendering failed</p>\n                  <p class=\"text-sm mt-1\">${error.message}</p>\n                  <pre class=\"mt-2 text-xs bg-gray-100 p-2 rounded overflow-x-auto\">${contentItem.content}</pre>\n                </div>\n              `;
+            }
           }
         }
       };
-
-      // Execute render
       renderDiagram();
+      // Cleanup on unmount
+      return () => {
+        cancelled = true;
+        if (mermaidRef.current) {
+          mermaidRef.current.innerHTML = '';
+        }
+      };
     }
-  }, [contentItem]);
+  }, [contentItem, uniqueId]);
 
   // Highlight code blocks after markdown renders
   useEffect(() => {
@@ -266,11 +284,16 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
               <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
-                    code({ node, inline, className, children, ...props }) {
+                    code({ node, inline, className, children, ...props }: {
+                      node: any;
+                      inline?: boolean;
+                      className?: string;
+                      children: React.ReactNode;
+                    } & React.HTMLAttributes<HTMLElement>): ReactElement {
                       const match = /language-(\w+)/.exec(className || '');
                       return !inline && match ? (
-                          <pre className={className} {...props}>
-                            <code className={className}>
+                          <pre className={className}>
+                            <code className={className} {...props}>
                               {children}
                             </code>
                           </pre>
@@ -306,7 +329,7 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
 
       case 'mermaid':
         return (
-            <div className="mermaid-container">
+            <div className="mermaid-container" style={{ maxWidth: '100%', overflowX: 'auto', padding: 8 }}>
               {mermaidLoading && (
                   <div className="flex justify-center items-center h-40">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -314,8 +337,9 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
               )}
               <div
                   ref={mermaidRef}
-                  className="mermaid-wrapper overflow-x-auto"
-                  style={{ minHeight: mermaidLoading ? '0' : 'auto' }}
+                  className="mermaid-wrapper"
+                  id={`mermaid-container-${uniqueId}`}
+                  style={{ minHeight: mermaidLoading ? '0' : 'auto', maxWidth: '100%', maxHeight: 400, overflowX: 'auto', overflowY: 'auto' }}
               />
               {mermaidError && (
                   <div className="text-red-500 mt-4">
