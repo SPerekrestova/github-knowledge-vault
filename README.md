@@ -1,195 +1,80 @@
-
 # GitHub Knowledge Vault
 
-A React-based knowledge base application that aggregates and displays documentation, diagrams, and API collections from GitHub repositories within a private organization.
+A React + TypeScript knowledge base app that aggregates and displays documentation, diagrams, and API collections from GitHub repositories (organization or user).
 
-## Project Overview
+## Features
 
-This application provides a centralized view of documentation assets stored across multiple GitHub repositories. It supports filtering by repository and content type, with a clean interface for browsing and viewing different types of technical documentation.
+- **Repository Overview:** Lists all repositories with a `/doc` folder
+- **Content Filtering:** Filter by repository, content type (Markdown, Mermaid, Postman), and search query
+- **Content Viewing:** Renders Markdown docs, Mermaid diagrams, and Postman collections
+- **Responsive UI:** Collapsible sidebar, filter bar, and content grid
+- **Manual Refresh:** Reloads data from GitHub (no caching yet)
 
-## Current Functionality
+## User Flow
 
-- **Repository Overview**: Display all repositories with content counts
-- **Content Filtering**: Filter by repository, content type (Documentation, Diagrams, API Collections), and search query
-- **Content Viewing**: View markdown documentation, mermaid diagrams, and Postman collections
-- **Responsive Design**: Collapsible sidebar and responsive layout
-- **Refresh Functionality**: Manual refresh to pull latest data (currently mocked)
+1. See a list of repositories with documentation
+2. Filter by repository, content type, or search
+3. Click a repository or content type to update the content grid
+4. Click a content item to open a detailed viewer
+5. Refresh data or reset filters at any time
 
-## Project Structure
+## Supported Repositories
 
-### Core Components
+- **Works with:**
+  - Any GitHub organization or user (private or public) with repositories containing a `/doc` folder
+  - Supported file types in `/doc`:
+    - Markdown files (`.md`)
+    - Mermaid diagrams (`.mmd`, `.mermaid`)
+    - Postman collections (`postman*.json`)
+- **Integration:**
+  - Only GitHub is supported out of the box
+  - No direct integration with other platforms (but code is extensible)
 
-#### `src/components/Sidebar.tsx`
-- Navigation sidebar with collapsible functionality
-- Repository and content type filtering
-- Active state management for selected filters
+## Setup & Local Development
 
-#### `src/components/FilterBar.tsx`
-- Top navigation bar with search and refresh functionality
-- Displays current active filters (repository and content type)
-- Debounced search input for performance
+1. **Clone the repository**
+2. **Configure environment variables** (see below)
+3. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+4. **Start the development server:**
+   ```bash
+   npm run dev
+   ```
+5. **Build for production:**
+   ```bash
+   npm run build
+   ```
 
-#### `src/components/RepoCard.tsx`
-- Repository display card showing content counts
-- Clickable cards for repository selection
-- Badge system for different content types
+## Environment Variables
 
-#### `src/components/ContentViewer.tsx`
-- Multi-format content viewer supporting:
-  - Markdown documentation with basic HTML conversion
-  - Mermaid diagram preview (placeholder for actual rendering)
-  - Postman collection preview with JSON view tabs
+Create a `.env` file in the project root with the following:
 
-### Custom Hooks
+```
+VITE_GITHUB_OWNER=your-github-org-or-username
+VITE_GITHUB_OWNER_TYPE=org # or 'user'
+VITE_GITHUB_API_BASE_URL=https://api.github.com
+VITE_GITHUB_TOKEN=your-github-token
+```
 
-#### `src/hooks/useRepos.tsx`
-- Repository data management
-- Loading and error states
-- Refresh functionality for repository list
-
-#### `src/hooks/useContent.tsx`
-- Content filtering and management
-- Support for multiple filter combinations
-- Search functionality with debouncing
-
-### Services
-
-#### `src/utils/githubService.ts`
-- GitHub API integration layer (currently mocked)
-- Content fetching and parsing logic
-- Extensive TODO comments for real GitHub integration
-
-### Pages
-
-#### `src/pages/Index.tsx`
-- Main application page
-- State management for filters and selected content
-- Orchestrates all components and hooks
-
-### Types
-
-#### `src/types/index.ts`
-- TypeScript definitions for:
-  - `Repository`: Repository metadata
-  - `ContentItem`: Documentation content structure
-  - `ContentType`: Supported content types
-  - `FilterOptions`: Filter configuration
+- `VITE_GITHUB_OWNER`: GitHub organization or username
+- `VITE_GITHUB_OWNER_TYPE`: `org` or `user`
+- `VITE_GITHUB_API_BASE_URL`: GitHub API base URL (default: `https://api.github.com`)
+- `VITE_GITHUB_TOKEN`: GitHub personal access token (required for private repos)
 
 ## Technology Stack
 
-- **React 18** with TypeScript
-- **Tailwind CSS** for styling
-- **shadcn/ui** for UI components
-- **React Router** for navigation
-- **Lucide React** for icons
-- **Vite** for build tooling
+- React 18 + TypeScript
+- Tailwind CSS
+- shadcn/ui
+- React Router
+- Lucide React
+- Vite
 
-## Mock Data Structure
+---
 
-The application currently uses mock data representing:
-- 4 sample repositories (API Gateway, User Service, Payment Processing, Notification Service)
-- Mixed content types across repositories
-- Realistic content examples for each supported format
+**This project is designed to work with any GitHub repository structure as long as documentation assets are placed in a `/doc` folder.**
 
-## Suggested Enhancements
-
-### Immediate Priorities
-
-1. **GitHub API Integration**
-   - Replace mock data with real GitHub API calls
-   - Implement authentication for private repositories
-   - Add rate limiting and error handling
-   - Store API credentials securely
-
-2. **Enhanced Content Rendering**
-   - Integrate Mermaid.js for actual diagram rendering
-   - Improve markdown parser with syntax highlighting
-   - Add better Postman collection visualization
-
-3. **Search Improvements**
-   - Full-text search across content
-   - Advanced filtering options
-   - Search result highlighting
-
-### Medium-term Enhancements
-
-4. **Caching and Performance**
-   - Implement content caching strategy
-   - Add background refresh capabilities
-   - Optimize large content rendering
-
-5. **User Experience**
-   - Add bookmarking/favorites functionality
-   - Implement content history tracking
-   - Add keyboard shortcuts for navigation
-
-6. **Content Management**
-   - Support for additional file formats (PDF, images)
-   - Content validation and health checks
-   - Automatic content updates via webhooks
-
-### Advanced Features
-
-7. **Collaboration Features**
-   - Comments and annotations on content
-   - Content approval workflows
-   - Team-specific content views
-
-8. **Analytics and Insights**
-   - Content usage analytics
-   - Popular content tracking
-   - Repository health metrics
-
-9. **Integration Expansion**
-   - Support for other documentation platforms
-   - API documentation generation
-   - Export capabilities
-
-## Development Setup
-
-```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-```
-
-## Environment Configuration
-
-When implementing GitHub integration, you'll need to configure:
-
-```env
-GITHUB_ORGANIZATION=your-organization-name
-GITHUB_TOKEN=your-github-token
-GITHUB_API_BASE_URL=https://api.github.com
-```
-
-## File Organization Best Practices
-
-The project follows React best practices:
-- Components are focused and single-responsibility
-- Custom hooks separate business logic from UI
-- Type definitions ensure type safety
-- Services abstract external API interactions
-
-## Contributing
-
-When adding new features:
-1. Create focused, small components
-2. Use TypeScript for all new code
-3. Follow existing naming conventions
-4. Add appropriate error handling
-5. Update this README for significant changes
-
-## Next Steps
-
-1. Connect to GitHub API (see TODOs in `githubService.ts`)
-2. Implement real-time content fetching
-3. Add proper error boundaries
-4. Enhance content rendering capabilities
-5. Add comprehensive testing suite
+For questions or issues, please open an issue or pull request.
 
