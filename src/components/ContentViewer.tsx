@@ -27,54 +27,39 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
   const [mermaidError, setMermaidError] = useState<string | null>(null);
   const mermaidRef = useRef<HTMLDivElement>(null);
 
-  // Debug logging for component lifecycle
-  useEffect(() => {
-    console.log('🔍 ContentViewer mounted/updated:', {
-      type: contentItem.type,
-      name: contentItem.name,
-      contentLength: contentItem.content?.length,
-      isMermaid: contentItem.type === 'mermaid'
-    });
-  }, [contentItem]);
-
   // Initialize Mermaid only once
   useEffect(() => {
     if (!mermaidInitialized) {
-      console.log('🔧 Initializing Mermaid for the first time...');
       try {
         mermaid.initialize({
           startOnLoad: false,
           theme: 'default',
           securityLevel: 'loose',
           fontFamily: 'Inter, system-ui, sans-serif',
-          logLevel: 1, // 1 = debug level
+          logLevel: 5, // 5 = error level only
           flowchart: {
             htmlLabels: true,
             curve: 'basis'
+          },
+          themeVariables: {
+            primaryColor: '#f3f4f6',
+            primaryTextColor: '#111827',
+            primaryBorderColor: '#d1d5db',
+            lineColor: '#6b7280',
+            secondaryColor: '#e5e7eb',
+            tertiaryColor: '#f9fafb'
           }
         });
         mermaidInitialized = true;
-        console.log('✅ Mermaid initialized successfully');
-        console.log('📊 Mermaid version:', mermaid.version);
       } catch (error) {
-        console.error('❌ Mermaid initialization failed:', error);
+        console.error('Mermaid initialization failed:', error);
       }
-    } else {
-      console.log('ℹ️ Mermaid already initialized');
     }
   }, []);
 
   // Render Mermaid diagrams
   useEffect(() => {
-    console.log('🎯 Render effect triggered:', {
-      type: contentItem.type,
-      hasMermaidRef: !!mermaidRef.current,
-      contentPreview: contentItem.content?.substring(0, 50)
-    });
-
     if (contentItem.type === 'mermaid' && mermaidRef.current) {
-      console.log('🎨 Starting Mermaid render process...');
-
       const renderDiagram = async () => {
         try {
           setMermaidLoading(true);
@@ -86,17 +71,13 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
           }
 
           const content = contentItem.content.trim();
-          console.log('📝 Diagram content:', content);
-          console.log('📏 Content length:', content.length);
-          console.log('🔤 First line:', content.split('\n')[0]);
 
           // Clear previous content
           if (mermaidRef.current) {
             mermaidRef.current.innerHTML = '';
           }
 
-          // Method 1: Create pre element and use mermaid.run
-          console.log('🔄 Attempting mermaid rendering with pre element...');
+          // Create pre element and use mermaid.run
           const pre = document.createElement('pre');
           pre.className = 'mermaid';
           pre.textContent = content;
@@ -110,12 +91,11 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
               suppressErrors: false
             });
 
-            console.log('✅ Mermaid rendering complete');
             setMermaidLoading(false);
           }
 
         } catch (error) {
-          console.error('❌ Mermaid rendering error:', error);
+          console.error('Mermaid rendering error:', error);
           setMermaidError(error.message || 'Failed to render diagram');
           setMermaidLoading(false);
 
@@ -133,20 +113,8 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
 
       // Execute render
       renderDiagram();
-    } else {
-      console.log('⏭️ Skipping render:', {
-        reason: contentItem.type !== 'mermaid' ? 'Not a mermaid type' : 'No ref available'
-      });
     }
   }, [contentItem]);
-
-  // Log ref state
-  useEffect(() => {
-    console.log('📍 Ref state:', {
-      hasRef: !!mermaidRef.current,
-      refElement: mermaidRef.current
-    });
-  }, [mermaidRef.current]);
 
   // Highlight code blocks after markdown renders
   useEffect(() => {
@@ -179,98 +147,98 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
   const renderPostmanCollection = (jsonString: string) => {
     try {
       const collection = JSON.parse(jsonString);
-      
-      return (
-        <div className="space-y-6">
-          {/* Collection Info */}
-          <div className="border-l-4 border-purple-500 pl-4">
-            <h3 className="text-lg font-semibold">{collection.info?.name}</h3>
-            <p className="text-gray-600">{collection.info?.description}</p>
-            {collection.info?.version && (
-              <Badge variant="outline" className="mt-2">v{collection.info.version}</Badge>
-            )}
-          </div>
 
-          {/* Variables */}
-          {collection.variable && collection.variable.length > 0 && (
-            <div>
-              <h4 className="font-medium mb-2">Variables</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {collection.variable.map((variable: any, index: number) => (
-                  <div key={index} className="bg-gray-50 p-2 rounded text-sm">
-                    <span className="font-mono text-purple-600">{variable.key}</span>
-                    {variable.value && <span className="ml-2 text-gray-600">= {variable.value}</span>}
+      return (
+          <div className="space-y-6">
+            {/* Collection Info */}
+            <div className="border-l-4 border-purple-500 pl-4">
+              <h3 className="text-lg font-semibold">{collection.info?.name}</h3>
+              <p className="text-gray-600">{collection.info?.description}</p>
+              {collection.info?.version && (
+                  <Badge variant="outline" className="mt-2">v{collection.info.version}</Badge>
+              )}
+            </div>
+
+            {/* Variables */}
+            {collection.variable && collection.variable.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2">Variables</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {collection.variable.map((variable: any, index: number) => (
+                        <div key={index} className="bg-gray-50 p-2 rounded text-sm">
+                          <span className="font-mono text-purple-600">{variable.key}</span>
+                          {variable.value && <span className="ml-2 text-gray-600">= {variable.value}</span>}
+                        </div>
+                    ))}
                   </div>
+                </div>
+            )}
+
+            {/* Requests */}
+            <div>
+              <h4 className="font-medium mb-3">Requests ({collection.item?.length || 0})</h4>
+              <div className="space-y-3">
+                {collection.item?.map((item: any, index: number) => (
+                    <div key={index} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-medium">{item.name}</h5>
+                        <Badge
+                            variant={getMethodVariant(item.request?.method)}
+                            className="text-xs"
+                        >
+                          {item.request?.method || 'GET'}
+                        </Badge>
+                      </div>
+
+                      {item.request?.url && (
+                          <div className="font-mono text-sm bg-gray-100 p-2 rounded mb-2">
+                            {typeof item.request.url === 'string'
+                                ? item.request.url
+                                : item.request.url.raw || item.request.url.host?.join('.') + item.request.url.path?.join('/')
+                            }
+                          </div>
+                      )}
+
+                      {item.request?.description && (
+                          <p className="text-sm text-gray-600 mb-2">{item.request.description}</p>
+                      )}
+
+                      {/* Headers */}
+                      {item.request?.header && item.request.header.length > 0 && (
+                          <div className="mt-2">
+                            <span className="text-xs font-medium text-gray-500">Headers:</span>
+                            <div className="mt-1 space-y-1">
+                              {item.request.header.map((header: any, headerIndex: number) => (
+                                  <div key={headerIndex} className="text-xs font-mono bg-blue-50 p-1 rounded">
+                                    {header.key}: {header.value}
+                                  </div>
+                              ))}
+                            </div>
+                          </div>
+                      )}
+
+                      {/* Body */}
+                      {item.request?.body && (
+                          <div className="mt-2">
+                            <span className="text-xs font-medium text-gray-500">Body:</span>
+                            <div className="mt-1 text-xs font-mono bg-yellow-50 p-2 rounded max-h-20 overflow-y-auto">
+                              {item.request.body.raw || JSON.stringify(item.request.body, null, 2)}
+                            </div>
+                          </div>
+                      )}
+                    </div>
                 ))}
               </div>
             </div>
-          )}
-
-          {/* Requests */}
-          <div>
-            <h4 className="font-medium mb-3">Requests ({collection.item?.length || 0})</h4>
-            <div className="space-y-3">
-              {collection.item?.map((item: any, index: number) => (
-                <div key={index} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center justify-between mb-2">
-                    <h5 className="font-medium">{item.name}</h5>
-                    <Badge 
-                      variant={getMethodVariant(item.request?.method)}
-                      className="text-xs"
-                    >
-                      {item.request?.method || 'GET'}
-                    </Badge>
-                  </div>
-                  
-                  {item.request?.url && (
-                    <div className="font-mono text-sm bg-gray-100 p-2 rounded mb-2">
-                      {typeof item.request.url === 'string' 
-                        ? item.request.url 
-                        : item.request.url.raw || item.request.url.host?.join('.') + item.request.url.path?.join('/')
-                      }
-                    </div>
-                  )}
-                  
-                  {item.request?.description && (
-                    <p className="text-sm text-gray-600 mb-2">{item.request.description}</p>
-                  )}
-                  
-                  {/* Headers */}
-                  {item.request?.header && item.request.header.length > 0 && (
-                    <div className="mt-2">
-                      <span className="text-xs font-medium text-gray-500">Headers:</span>
-                      <div className="mt-1 space-y-1">
-                        {item.request.header.map((header: any, headerIndex: number) => (
-                          <div key={headerIndex} className="text-xs font-mono bg-blue-50 p-1 rounded">
-                            {header.key}: {header.value}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Body */}
-                  {item.request?.body && (
-                    <div className="mt-2">
-                      <span className="text-xs font-medium text-gray-500">Body:</span>
-                      <div className="mt-1 text-xs font-mono bg-yellow-50 p-2 rounded max-h-20 overflow-y-auto">
-                        {item.request.body.raw || JSON.stringify(item.request.body, null, 2)}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
           </div>
-        </div>
       );
     } catch (error) {
       console.error('Failed to parse Postman collection:', error);
       return (
-        <div className="text-red-500 p-4 border border-red-200 rounded bg-red-50">
-          <p className="font-medium">Invalid Postman Collection</p>
-          <p className="text-sm mt-1">The JSON format is invalid or corrupted.</p>
-        </div>
+          <div className="text-red-500 p-4 border border-red-200 rounded bg-red-50">
+            <p className="font-medium">Invalid Postman Collection</p>
+            <p className="text-sm mt-1">The JSON format is invalid or corrupted.</p>
+          </div>
       );
     }
   };
@@ -294,50 +262,49 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
     switch (contentItem.type) {
       case 'markdown':
         return (
-          <div className="prose prose-sm max-w-none">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                code({ node, inline, className, children, ...props }) {
-                  const match = /language-(\w+)/.exec(className || '');
-                  return !inline && match ? (
-                    <pre className={className} {...props}>
-                      <code className={className}>
-                        {children}
-                      </code>
-                    </pre>
-                  ) : (
-                    <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono" {...props}>
-                      {children}
-                    </code>
-                  );
-                },
-                table: ({ children }) => (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full border-collapse border border-gray-300">
-                      {children}
-                    </table>
-                  </div>
-                ),
-                th: ({ children }) => (
-                  <th className="border border-gray-300 px-4 py-2 bg-gray-50 font-medium text-left">
-                    {children}
-                  </th>
-                ),
-                td: ({ children }) => (
-                  <td className="border border-gray-300 px-4 py-2">
-                    {children}
-                  </td>
-                ),
-              }}
-            >
-              {contentItem.content}
-            </ReactMarkdown>
-          </div>
+            <div className="prose prose-sm max-w-none">
+              <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    code({ node, inline, className, children, ...props }) {
+                      const match = /language-(\w+)/.exec(className || '');
+                      return !inline && match ? (
+                          <pre className={className} {...props}>
+                            <code className={className}>
+                              {children}
+                            </code>
+                          </pre>
+                      ) : (
+                          <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono" {...props}>
+                            {children}
+                          </code>
+                      );
+                    },
+                    table: ({ children }) => (
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full border-collapse border border-gray-300">
+                            {children}
+                          </table>
+                        </div>
+                    ),
+                    th: ({ children }) => (
+                        <th className="border border-gray-300 px-4 py-2 bg-gray-50 font-medium text-left">
+                          {children}
+                        </th>
+                    ),
+                    td: ({ children }) => (
+                        <td className="border border-gray-300 px-4 py-2">
+                          {children}
+                        </td>
+                    ),
+                  }}
+              >
+                {contentItem.content}
+              </ReactMarkdown>
+            </div>
         );
 
       case 'mermaid':
-        console.log('🖼️ Rendering mermaid case');
         return (
             <div className="mermaid-container">
               {mermaidLoading && (
@@ -347,7 +314,7 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
               )}
               <div
                   ref={mermaidRef}
-                  className="mermaid-wrapper"
+                  className="mermaid-wrapper overflow-x-auto"
                   style={{ minHeight: mermaidLoading ? '0' : 'auto' }}
               />
               {mermaidError && (
@@ -357,46 +324,46 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
               )}
             </div>
         );
-      
+
       case 'postman':
         return (
-          <Tabs defaultValue="preview" className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="preview">Preview</TabsTrigger>
-              <TabsTrigger value="json">Raw JSON</TabsTrigger>
-            </TabsList>
-            <TabsContent value="preview">
-              {renderPostmanCollection(contentItem.content)}
-            </TabsContent>
-            <TabsContent value="json">
+            <Tabs defaultValue="preview" className="w-full">
+              <TabsList className="mb-4">
+                <TabsTrigger value="preview">Preview</TabsTrigger>
+                <TabsTrigger value="json">Raw JSON</TabsTrigger>
+              </TabsList>
+              <TabsContent value="preview">
+                {renderPostmanCollection(contentItem.content)}
+              </TabsContent>
+              <TabsContent value="json">
               <pre className="border p-4 rounded bg-gray-50 overflow-auto max-h-96 text-sm">
                 <code className="language-json">
                   {JSON.stringify(JSON.parse(contentItem.content), null, 2)}
                 </code>
               </pre>
-            </TabsContent>
-          </Tabs>
+              </TabsContent>
+            </Tabs>
         );
-      
+
       default:
         return <div>Unsupported content type</div>;
     }
   };
 
   return (
-    <Card className="shadow-sm content-transition">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>{contentItem.name}</CardTitle>
-          <div className="text-sm text-gray-500 mt-1">
-            Last updated: {formatDate(contentItem.lastUpdated)}
+      <Card className="shadow-sm content-transition">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>{contentItem.name}</CardTitle>
+            <div className="text-sm text-gray-500 mt-1">
+              Last updated: {formatDate(contentItem.lastUpdated)}
+            </div>
           </div>
-        </div>
-        {renderContentTypeLabel(contentItem.type)}
-      </CardHeader>
-      <CardContent>
-        {renderContent()}
-      </CardContent>
-    </Card>
+          {renderContentTypeLabel(contentItem.type)}
+        </CardHeader>
+        <CardContent>
+          {renderContent()}
+        </CardContent>
+      </Card>
   );
 };

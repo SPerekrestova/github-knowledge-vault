@@ -28,10 +28,9 @@ const Index = () => {
   
   // Combined refresh state
   const isRefreshing = reposRefreshing || contentRefreshing;
-  
+
   // Handle refresh - refresh both repos and content
   const handleRefresh = async () => {
-    console.log('Refreshing data from GitHub...');
     await Promise.all([
       refreshRepos(),
       refreshContent()

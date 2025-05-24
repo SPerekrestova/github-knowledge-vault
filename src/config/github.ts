@@ -8,8 +8,7 @@ export const githubConfig = {
 
 // Validate required config
 if (!githubConfig.owner || !githubConfig.token) {
-    console.error('Missing required GitHub configuration!');
-    console.log('Current env:', import.meta.env);
+    console.error('Missing required GitHub configuration! Please check your .env file.');
 }
 
 export default githubConfig;

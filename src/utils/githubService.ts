@@ -30,16 +30,16 @@ export const githubService = {
 
     // Check each repo for docs folder
     const reposWithDocs = await Promise.all(
-      filteredRepos.map(async (repo: GitHubRepo) => {
-        const hasDocFolder = await githubService.checkDocsFolderExists(repo.name);
-        return {
-          id: repo.id.toString(),
-          name: repo.name,
-          description: repo.description || '',
-          url: repo.html_url,
-          hasDocFolder: hasDocFolder
-        };
-      })
+        filteredRepos.map(async (repo: GitHubRepo) => {
+          const hasDocFolder = await githubService.checkDocsFolderExists(repo.name);
+          return {
+            id: repo.id.toString(),
+            name: repo.name,
+            description: repo.description || '',
+            url: repo.html_url,
+            hasDocFolder: hasDocFolder
+          };
+        })
     );
 
     return reposWithDocs.filter(repo => repo.hasDocFolder);
@@ -48,20 +48,21 @@ export const githubService = {
   checkDocsFolderExists: async (repoName: string): Promise<boolean> => {
     try {
       const response = await fetch(
-        `${githubConfig.apiBaseUrl}/repos/${githubConfig.owner}/${repoName}/contents`,
-        {
-          headers: {
-            'Authorization': `token ${githubConfig.token}`,
-            'Accept': 'application/vnd.github.v3+json'
+          `${githubConfig.apiBaseUrl}/repos/${githubConfig.owner}/${repoName}/contents`,
+          {
+            headers: {
+              'Authorization': `token ${githubConfig.token}`,
+              'Accept': 'application/vnd.github.v3+json'
+            }
           }
-        }
       );
       if (!response.ok) {
         return false;
       }
       const items = await response.json();
       return Array.isArray(items) && items.some(item => item.name === 'doc' && item.type === 'dir');
-    } catch {
+    } catch (error) {
+      // Silently handle errors and return false
       return false;
     }
   },
@@ -76,13 +77,13 @@ export const githubService = {
     let response: Response;
     try {
       response = await fetch(
-        `${githubConfig.apiBaseUrl}/repos/${githubConfig.owner}/${repo.name}/contents/doc`,
-        {
-          headers: {
-            'Authorization': `token ${githubConfig.token}`,
-            'Accept': 'application/vnd.github.v3+json'
+          `${githubConfig.apiBaseUrl}/repos/${githubConfig.owner}/${repo.name}/contents/doc`,
+          {
+            headers: {
+              'Authorization': `token ${githubConfig.token}`,
+              'Accept': 'application/vnd.github.v3+json'
+            }
           }
-        }
       );
     } catch (error) {
       // Network or fetch error, skip this repo
@@ -140,9 +141,9 @@ export const githubService = {
   getAllContent: async (): Promise<ContentItem[]> => {
     const repos = await githubService.getRepositories();
     const allContentArrays = await Promise.all(
-      repos.map(async (repo) => {
-        return githubService.getRepoContent(repo.id);
-      })
+        repos.map(async (repo) => {
+          return githubService.getRepoContent(repo.id);
+        })
     );
     // Flatten the array of arrays
     return allContentArrays.flat();
@@ -164,7 +165,6 @@ export const githubService = {
   refreshAllData: async (): Promise<void> => {
     // No cache to clear: all data is always fetched fresh from GitHub
     // This is a no-op for now, but can be extended if caching is added in the future
-    console.log('Refreshing all data from GitHub...');
   }
 };
 

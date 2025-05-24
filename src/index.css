@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -59,8 +58,62 @@
   @apply prose prose-slate max-w-none dark:prose-invert;
 }
 
-.mermaid-diagram {
-  @apply border border-border rounded-md p-4 bg-white;
+.mermaid-container {
+  @apply w-full overflow-x-auto;
+}
+
+.mermaid-wrapper {
+  @apply min-w-full;
+}
+
+/* Mermaid diagram styles */
+.mermaid {
+  @apply text-gray-800;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.mermaid .node rect,
+.mermaid .node circle,
+.mermaid .node ellipse,
+.mermaid .node polygon,
+.mermaid .node path {
+  fill: #f9fafb;
+  stroke: #d1d5db;
+  stroke-width: 2px;
+}
+
+.mermaid .node.clickable {
+  cursor: pointer;
+}
+
+.mermaid .arrowheadPath {
+  fill: #6b7280;
+}
+
+.mermaid .edgePath .path {
+  stroke: #6b7280;
+  stroke-width: 1.5px;
+}
+
+.mermaid .cluster rect {
+  fill: #f3f4f6;
+  stroke: #d1d5db;
+  stroke-width: 1px;
+}
+
+.mermaid text {
+  fill: #111827;
+}
+
+.mermaid .classLabel .box {
+  stroke: none;
+  stroke-width: 0;
+  fill: #f9fafb;
+  opacity: 0.8;
+}
+
+.mermaid .classLabel .label {
+  fill: #111827;
 }
 
 .content-transition {
