@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { ContentItem, ContentType, FilterOptions } from '@/types';
 import { githubService } from '@/utils/githubService';
@@ -21,11 +20,20 @@ export const useContent = (initialFilter?: Partial<FilterOptions>) => {
 
       if (filter.repoId && filter.contentType) {
         const repoContent = await githubService.getRepoContent(filter.repoId);
-        fetchedContent = repoContent.filter(item => item.type === filter.contentType);
+        if (filter.contentType === 'postman' || filter.contentType === 'openapi') {
+          fetchedContent = repoContent.filter(item => item.type === 'postman' || item.type === 'openapi');
+        } else {
+          fetchedContent = repoContent.filter(item => item.type === filter.contentType);
+        }
       } else if (filter.repoId) {
         fetchedContent = await githubService.getRepoContent(filter.repoId);
       } else if (filter.contentType) {
-        fetchedContent = await githubService.getContentByType(filter.contentType);
+        if (filter.contentType === 'postman' || filter.contentType === 'openapi') {
+          const allContent = await githubService.getAllContent();
+          fetchedContent = allContent.filter(item => item.type === 'postman' || item.type === 'openapi');
+        } else {
+          fetchedContent = await githubService.getContentByType(filter.contentType);
+        }
       } else {
         fetchedContent = await githubService.getAllContent();
       }

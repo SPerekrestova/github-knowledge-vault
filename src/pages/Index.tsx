@@ -6,6 +6,7 @@ import { RepoCard } from '@/components/RepoCard';
 import { ContentViewer } from '@/components/ContentViewer';
 import { useRepos } from '@/hooks/useRepos';
 import { useContent } from '@/hooks/useContent';
+import { skippedFiles } from '@/utils/githubService';
 
 const Index = () => {
   const [activeRepoId, setActiveRepoId] = useState<string | null>(null);
@@ -47,18 +48,21 @@ const Index = () => {
   // Get content counts by repository
   const contentCountByRepo = useMemo(() => {
     const counts = new Map<string, { markdown: number, mermaid: number, postman: number }>();
-    
     repositories.forEach(repo => {
       counts.set(repo.id, { markdown: 0, mermaid: 0, postman: 0 });
     });
-    
     content.forEach(item => {
       const repoCount = counts.get(item.repoId);
       if (repoCount) {
-        repoCount[item.type] += 1;
+        if (item.type === 'postman' || item.type === 'openapi') {
+          repoCount.postman += 1; // Count both as API collections
+        } else if (item.type === 'markdown') {
+          repoCount.markdown += 1;
+        } else if (item.type === 'mermaid') {
+          repoCount.mermaid += 1;
+        }
       }
     });
-    
     return counts;
   }, [repositories, content]);
   
@@ -143,6 +147,19 @@ const Index = () => {
                   {/* Display content grid or repository grid */}
                   {(activeRepoId || activeContentType || searchQuery) ? (
                     <div>
+                      {/* Skipped files summary at top of repo view */}
+                      {activeRepoId && !activeContentType && !searchQuery && skippedFiles[activeRepoId] && skippedFiles[activeRepoId].length > 0 && (
+                        <div className="mb-6 max-w-4xl mx-auto">
+                          <div className="font-semibold text-sm mb-2 text-red-700">Skipped Files in this Repository</div>
+                          <ul className="text-xs bg-red-50 border border-red-200 rounded p-2">
+                            {skippedFiles[activeRepoId].map((f, idx) => (
+                              <li key={f.path + f.reason + idx} className="mb-1">
+                                <span className="font-mono text-gray-700">{f.name}</span>: <span className="text-gray-600">{f.reason}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                       <h3 className="text-lg font-medium mb-4">
                         {content.length} {content.length === 1 ? 'result' : 'results'} found
                       </h3>

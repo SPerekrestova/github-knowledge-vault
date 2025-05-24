@@ -514,19 +514,6 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
         </CardHeader>
         <CardContent>
           {renderContent()}
-          {/* Skipped files UI */}
-          {skippedFiles.filter(f => f.repoId === contentItem.repoId).length > 0 && (
-            <div className="mt-6">
-              <div className="font-semibold text-sm mb-2 text-red-700">Skipped Files in this Repository</div>
-              <ul className="text-xs bg-red-50 border border-red-200 rounded p-2">
-                {skippedFiles.filter(f => f.repoId === contentItem.repoId).map(f => (
-                  <li key={getUUID()} className="mb-1">
-                    <span className="font-mono text-gray-700">{f.name}</span>: <span className="text-gray-600">{f.reason}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </CardContent>
       </Card>
   );

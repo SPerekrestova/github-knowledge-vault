@@ -3,8 +3,8 @@ import {GitHubRepo} from "@/types/github.ts";
 import githubConfig from '@/config/github';
 import yaml from 'js-yaml';
 
-// Array to store skipped files for UI display
-export const skippedFiles: { repoId: string; name: string; path: string; reason: string }[] = [];
+// Map to store skipped files per repo for UI display
+export const skippedFiles: { [repoId: string]: { name: string; path: string; reason: string }[] } = {};
 
 export const githubService = {
 
@@ -75,6 +75,9 @@ export const githubService = {
     const repos = await githubService.getRepositories();
     const repo = repos.find(r => r.id === repoId);
     if (!repo) throw new Error('Repository not found');
+
+    // Clear skipped files for this repo
+    skippedFiles[repoId] = [];
 
     // Fetch docs folder contents
     let response: Response;
@@ -180,8 +183,7 @@ export const githubService = {
             lastUpdated: new Date().toISOString()
           });
         } else if (skipReason) {
-          skippedFiles.push({
-            repoId,
+          skippedFiles[repoId].push({
             name: file.name,
             path: file.path,
             reason: skipReason
