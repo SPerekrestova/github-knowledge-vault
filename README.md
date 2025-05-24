@@ -2,6 +2,9 @@
 
 A React + TypeScript knowledge base app that aggregates and displays documentation, diagrams, and API collections from GitHub repositories (organization or user).
 
+
+![Demo of the app](./assets/demo.gif)
+
 ## Features
 
 - **Repository Overview:** Lists all repositories with a `/doc` folder
@@ -26,6 +29,8 @@ A React + TypeScript knowledge base app that aggregates and displays documentati
     - Markdown files (`.md`)
     - Mermaid diagrams (`.mmd`, `.mermaid`)
     - Postman collections (`postman*.json`)
+    - SVG pictures (`.svg`)
+    - OpenAPI files (`.yml`)
 - **Integration:**
   - Only GitHub is supported out of the box
   - No direct integration with other platforms (but code is extensible)
