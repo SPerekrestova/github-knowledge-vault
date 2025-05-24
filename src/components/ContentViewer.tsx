@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { ContentItem, ContentType } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,49 +20,133 @@ interface ContentViewerProps {
   contentItem: ContentItem;
 }
 
+let mermaidInitialized = false;
+
 export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
   const [mermaidLoading, setMermaidLoading] = useState(contentItem.type === 'mermaid');
+  const [mermaidError, setMermaidError] = useState<string | null>(null);
   const mermaidRef = useRef<HTMLDivElement>(null);
 
-  // Initialize Mermaid
+  // Debug logging for component lifecycle
   useEffect(() => {
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: 'default',
-      securityLevel: 'loose',
-      fontFamily: 'Inter, system-ui, sans-serif',
+    console.log('🔍 ContentViewer mounted/updated:', {
+      type: contentItem.type,
+      name: contentItem.name,
+      contentLength: contentItem.content?.length,
+      isMermaid: contentItem.type === 'mermaid'
     });
+  }, [contentItem]);
+
+  // Initialize Mermaid only once
+  useEffect(() => {
+    if (!mermaidInitialized) {
+      console.log('🔧 Initializing Mermaid for the first time...');
+      try {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: 'default',
+          securityLevel: 'loose',
+          fontFamily: 'Inter, system-ui, sans-serif',
+          logLevel: 1, // 1 = debug level
+          flowchart: {
+            htmlLabels: true,
+            curve: 'basis'
+          }
+        });
+        mermaidInitialized = true;
+        console.log('✅ Mermaid initialized successfully');
+        console.log('📊 Mermaid version:', mermaid.version);
+      } catch (error) {
+        console.error('❌ Mermaid initialization failed:', error);
+      }
+    } else {
+      console.log('ℹ️ Mermaid already initialized');
+    }
   }, []);
 
   // Render Mermaid diagrams
   useEffect(() => {
+    console.log('🎯 Render effect triggered:', {
+      type: contentItem.type,
+      hasMermaidRef: !!mermaidRef.current,
+      contentPreview: contentItem.content?.substring(0, 50)
+    });
+
     if (contentItem.type === 'mermaid' && mermaidRef.current) {
-      setMermaidLoading(true);
-      
+      console.log('🎨 Starting Mermaid render process...');
+
       const renderDiagram = async () => {
         try {
-          const { svg } = await mermaid.render(`mermaid-${contentItem.id}`, contentItem.content);
-          if (mermaidRef.current) {
-            mermaidRef.current.innerHTML = svg;
+          setMermaidLoading(true);
+          setMermaidError(null);
+
+          // Validate content
+          if (!contentItem.content) {
+            throw new Error('No content provided');
           }
+
+          const content = contentItem.content.trim();
+          console.log('📝 Diagram content:', content);
+          console.log('📏 Content length:', content.length);
+          console.log('🔤 First line:', content.split('\n')[0]);
+
+          // Clear previous content
+          if (mermaidRef.current) {
+            mermaidRef.current.innerHTML = '';
+          }
+
+          // Method 1: Create pre element and use mermaid.run
+          console.log('🔄 Attempting mermaid rendering with pre element...');
+          const pre = document.createElement('pre');
+          pre.className = 'mermaid';
+          pre.textContent = content;
+
+          if (mermaidRef.current) {
+            mermaidRef.current.appendChild(pre);
+
+            // Run mermaid
+            await mermaid.run({
+              nodes: [pre],
+              suppressErrors: false
+            });
+
+            console.log('✅ Mermaid rendering complete');
+            setMermaidLoading(false);
+          }
+
         } catch (error) {
-          console.error('Mermaid rendering error:', error);
+          console.error('❌ Mermaid rendering error:', error);
+          setMermaidError(error.message || 'Failed to render diagram');
+          setMermaidLoading(false);
+
           if (mermaidRef.current) {
             mermaidRef.current.innerHTML = `
               <div class="text-red-500 p-4 border border-red-200 rounded bg-red-50">
                 <p class="font-medium">Diagram rendering failed</p>
-                <p class="text-sm mt-1">There was an error rendering this Mermaid diagram.</p>
+                <p class="text-sm mt-1">${error.message}</p>
+                <pre class="mt-2 text-xs bg-gray-100 p-2 rounded overflow-x-auto">${contentItem.content}</pre>
               </div>
             `;
           }
-        } finally {
-          setMermaidLoading(false);
         }
       };
 
+      // Execute render
       renderDiagram();
+    } else {
+      console.log('⏭️ Skipping render:', {
+        reason: contentItem.type !== 'mermaid' ? 'Not a mermaid type' : 'No ref available'
+      });
     }
   }, [contentItem]);
+
+  // Log ref state
+  useEffect(() => {
+    console.log('📍 Ref state:', {
+      hasRef: !!mermaidRef.current,
+      refElement: mermaidRef.current
+    });
+  }, [mermaidRef.current]);
 
   // Highlight code blocks after markdown renders
   useEffect(() => {
@@ -252,23 +335,27 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
             </ReactMarkdown>
           </div>
         );
-      
+
       case 'mermaid':
+        console.log('🖼️ Rendering mermaid case');
         return (
-          <div className="mermaid-container">
-            {mermaidLoading ? (
-              <div className="flex justify-center items-center h-40">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-              </div>
-            ) : (
-              <div className="text-center">
-                <div 
+            <div className="mermaid-container">
+              {mermaidLoading && (
+                  <div className="flex justify-center items-center h-40">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+                  </div>
+              )}
+              <div
                   ref={mermaidRef}
-                  className="inline-block max-w-full overflow-x-auto"
-                />
-              </div>
-            )}
-          </div>
+                  className="mermaid-wrapper"
+                  style={{ minHeight: mermaidLoading ? '0' : 'auto' }}
+              />
+              {mermaidError && (
+                  <div className="text-red-500 mt-4">
+                    Error: {mermaidError}
+                  </div>
+              )}
+            </div>
         );
       
       case 'postman':
