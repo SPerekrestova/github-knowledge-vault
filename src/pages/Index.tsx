@@ -111,9 +111,8 @@ const Index = () => {
         onContentTypeSelect={handleContentTypeSelect}
         onReset={handleReset}
       />
-      
       {/* Main Content */}
-      <div className="flex-1 overflow-hidden flex flex-col">
+      <div className="flex-1 flex flex-col h-screen">
         {/* Filter Bar */}
         <FilterBar
           onSearch={handleSearch}
@@ -122,7 +121,6 @@ const Index = () => {
           activeContentType={activeContentType}
           isRefreshing={isRefreshing}
         />
-        
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-6">
           {contentLoading ? (
@@ -163,7 +161,6 @@ const Index = () => {
                       <h3 className="text-lg font-medium mb-4">
                         {content.length} {content.length === 1 ? 'result' : 'results'} found
                       </h3>
-                      
                       {content.length > 0 ? (
                         <div className="grid gap-6">
                           {content.map(item => (

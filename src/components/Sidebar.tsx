@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useRepos } from '@/hooks/useRepos';
 import { ContentType } from '@/types';
@@ -31,7 +30,7 @@ export const Sidebar = ({
   return (
     <div 
       className={cn(
-        "h-screen transition-all duration-300 bg-sidebar text-sidebar-foreground border-r border-sidebar-border",
+        "flex flex-col h-screen transition-all duration-300 bg-sidebar text-sidebar-foreground border-r border-sidebar-border",
         isCollapsed ? "w-16" : "w-64"
       )}
     >
@@ -47,7 +46,7 @@ export const Sidebar = ({
         </button>
       </div>
       
-      <div className="overflow-y-auto h-[calc(100vh-64px)]">
+      <div className="flex-1 overflow-y-auto">
         {/* All Content button */}
         <div className="p-4">
           <button
