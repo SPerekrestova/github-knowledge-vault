@@ -1,5 +1,4 @@
-
-export type ContentType = 'markdown' | 'mermaid' | 'postman';
+export type ContentType = 'markdown' | 'mermaid' | 'postman' | 'openapi' | 'svg';
 
 export interface Repository {
   id: string;

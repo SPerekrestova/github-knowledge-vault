@@ -1,7 +1,10 @@
 import { Repository, ContentItem, ContentType } from '@/types';
 import {GitHubRepo} from "@/types/github.ts";
 import githubConfig from '@/config/github';
+import yaml from 'js-yaml';
 
+// Array to store skipped files for UI display
+export const skippedFiles: { repoId: string; name: string; path: string; reason: string }[] = [];
 
 export const githubService = {
 
@@ -107,29 +110,82 @@ export const githubService = {
       if (file.type === 'file') {
         const extension = file.name.split('.').pop()?.toLowerCase();
         let contentType: ContentType | null = null;
+        let content: string | null = null;
+        let skipReason: string | null = null;
 
-        // Determine content type by extension
-        if (extension === 'md') contentType = 'markdown';
-        else if (extension === 'mmd' || extension === 'mermaid') contentType = 'mermaid';
-        else if (extension === 'json' && file.name.toLowerCase().includes('postman')) {
-          contentType = 'postman';
+        // Markdown
+        if (extension === 'md') {
+          contentType = 'markdown';
+          content = await fetchFileContent(repo.name, file.path);
+        }
+        // Mermaid diagrams
+        else if (extension === 'mmd' || extension === 'mermaid') {
+          contentType = 'mermaid';
+          content = await fetchFileContent(repo.name, file.path);
+        }
+        // SVG files
+        else if (extension === 'svg') {
+          contentType = 'svg';
+          content = await fetchFileContent(repo.name, file.path);
+        }
+        // YAML files: try to detect OpenAPI
+        else if (extension === 'yml' || extension === 'yaml') {
+          try {
+            const rawContent = await fetchFileContent(repo.name, file.path);
+            const parsed = yaml.load(rawContent);
+            if (parsed && typeof parsed === 'object' && (parsed.openapi || parsed.swagger)) {
+              contentType = 'openapi';
+              content = rawContent;
+            } else {
+              skipReason = 'Unrecognized YAML structure';
+            }
+          } catch (err) {
+            skipReason = 'Invalid YAML';
+          }
+        }
+        // JSON files: try to detect Postman or OpenAPI
+        else if (extension === 'json') {
+          try {
+            const rawContent = await fetchFileContent(repo.name, file.path);
+            const parsed = JSON.parse(rawContent);
+            // Postman detection
+            if (parsed.info && (parsed.info.schema || parsed.info.name)) {
+              contentType = 'postman';
+              content = rawContent;
+            }
+            // OpenAPI detection
+            else if (parsed.openapi || parsed.swagger) {
+              contentType = 'openapi';
+              content = rawContent;
+            } else {
+              skipReason = 'Unrecognized JSON structure';
+            }
+          } catch (err) {
+            skipReason = 'Invalid JSON';
+          }
+        }
+        // Other file types: skip
+        else {
+          skipReason = 'Unsupported file extension';
         }
 
-        if (contentType) {
-          try {
-            const content = await fetchFileContent(repo.name, file.path);
-            contentItems.push({
-              id: `${repoId}-${file.sha}`,
-              repoId,
-              name: file.name,
-              path: file.path,
-              type: contentType,
-              content,
-              lastUpdated: new Date().toISOString()
-            });
-          } catch (error) {
-            console.error(`Failed to fetch ${file.path}:`, error);
-          }
+        if (contentType && content) {
+          contentItems.push({
+            id: `${repoId}-${file.sha}`,
+            repoId,
+            name: file.name,
+            path: file.path,
+            type: contentType as ContentType,
+            content,
+            lastUpdated: new Date().toISOString()
+          });
+        } else if (skipReason) {
+          skippedFiles.push({
+            repoId,
+            name: file.name,
+            path: file.path,
+            reason: skipReason
+          });
         }
       }
     }

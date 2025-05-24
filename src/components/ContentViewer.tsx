@@ -8,6 +8,8 @@ import remarkGfm from 'remark-gfm';
 import mermaid from 'mermaid';
 import Prism from 'prismjs';
 import { ReactElement } from 'react';
+import { skippedFiles } from '@/utils/githubService';
+import yaml from 'js-yaml';
 
 // Import Prism CSS and additional languages
 import 'prismjs/themes/prism-tomorrow.css';
@@ -23,6 +25,14 @@ interface ContentViewerProps {
 
 let mermaidInitialized = false;
 let mermaidDiagramCounter = 0;
+
+// Helper to generate a UUID (uses crypto.randomUUID if available, otherwise fallback)
+const getUUID = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+};
 
 export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
   const [mermaidLoading, setMermaidLoading] = useState(contentItem.type === 'mermaid');
@@ -156,6 +166,7 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
       case 'mermaid':
         return <Badge className="bg-green-100 text-green-800">Diagram</Badge>;
       case 'postman':
+      case 'openapi':
         return <Badge className="bg-purple-100 text-purple-800">API Collection</Badge>;
       default:
         return null;
@@ -171,7 +182,13 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
             {/* Collection Info */}
             <div className="border-l-4 border-purple-500 pl-4">
               <h3 className="text-lg font-semibold">{collection.info?.name}</h3>
-              <p className="text-gray-600">{collection.info?.description}</p>
+              {collection.info?.description && (
+                <div className="prose prose-sm max-w-none text-gray-600">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {collection.info.description}
+                  </ReactMarkdown>
+                </div>
+              )}
               {collection.info?.version && (
                   <Badge variant="outline" className="mt-2">v{collection.info.version}</Badge>
               )}
@@ -218,7 +235,11 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
                       )}
 
                       {item.request?.description && (
-                          <p className="text-sm text-gray-600 mb-2">{item.request.description}</p>
+                        <div className="prose prose-sm max-w-none text-gray-600 mb-2">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {item.request.description}
+                          </ReactMarkdown>
+                        </div>
                       )}
 
                       {/* Headers */}
@@ -243,6 +264,27 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
                               {item.request.body.raw || JSON.stringify(item.request.body, null, 2)}
                             </div>
                           </div>
+                      )}
+
+                      {/* Responses with markdown description */}
+                      {item.response && Array.isArray(item.response) && item.response.length > 0 && (
+                        <div className="mt-2">
+                          <span className="text-xs font-medium text-gray-500">Responses:</span>
+                          <div className="mt-1 space-y-2">
+                            {item.response.map((resp: any, respIdx: number) => (
+                              <div key={respIdx} className="border rounded bg-gray-50 p-2">
+                                <div className="font-mono text-xs text-purple-700 mb-1">{resp.name || resp.code || 'Response'}</div>
+                                {resp.description && (
+                                  <div className="prose prose-xs max-w-none text-gray-600">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                      {resp.description}
+                                    </ReactMarkdown>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
                 ))}
@@ -349,6 +391,18 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
             </div>
         );
 
+      case 'svg':
+        // Render SVG as an <img> using data URL
+        return (
+          <div className="flex justify-center items-center">
+            <img
+              src={`data:image/svg+xml;base64,${btoa(contentItem.content)}`}
+              alt={contentItem.name}
+              style={{ maxWidth: '100%', maxHeight: 400, display: 'block' }}
+            />
+          </div>
+        );
+
       case 'postman':
         return (
             <Tabs defaultValue="preview" className="w-full">
@@ -369,6 +423,79 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
             </Tabs>
         );
 
+      case 'openapi':
+        // Render OpenAPI as a tabbed interface: summary and raw YAML/JSON
+        let openapiSummary: { title?: string; version?: string; description?: string } = {};
+        let parsed: any = null;
+        try {
+          // Try to parse as JSON, fallback to YAML
+          try {
+            parsed = JSON.parse(contentItem.content);
+          } catch {
+            parsed = yaml.load(contentItem.content);
+          }
+          if (parsed && typeof parsed === 'object') {
+            openapiSummary.title = parsed.info?.title;
+            openapiSummary.version = parsed.info?.version;
+            openapiSummary.description = parsed.info?.description;
+          }
+        } catch {}
+        return (
+          <Tabs defaultValue="summary" className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="summary">Summary</TabsTrigger>
+              <TabsTrigger value="raw">Raw</TabsTrigger>
+            </TabsList>
+            <TabsContent value="summary">
+              <div className="space-y-4">
+                <div>
+                  <div className="font-semibold text-lg">{openapiSummary.title || 'OpenAPI Spec'}</div>
+                  {openapiSummary.version && <div className="text-sm text-gray-500">Version: {openapiSummary.version}</div>}
+                  {openapiSummary.description && <div className="text-gray-700 mt-2">{openapiSummary.description}</div>}
+                  {!(openapiSummary.title || openapiSummary.version || openapiSummary.description) && (
+                    <div className="text-gray-500">No summary info found in OpenAPI spec.</div>
+                  )}
+                </div>
+                {/* Endpoints Table */}
+                {parsed && parsed.paths && typeof parsed.paths === 'object' && Object.keys(parsed.paths).length > 0 && (
+                  <div>
+                    <div className="font-semibold text-base mb-2 mt-4">Endpoints</div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border border-gray-200 text-sm">
+                        <thead>
+                          <tr className="bg-gray-50">
+                            <th className="border px-2 py-1 text-left">Method</th>
+                            <th className="border px-2 py-1 text-left">Path</th>
+                            <th className="border px-2 py-1 text-left">Summary</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(parsed.paths).map(([path, methods]: [string, any]) =>
+                            Object.entries(methods).map(([method, op]: [string, any], idx: number) => (
+                              <tr key={path + method} className="even:bg-gray-50">
+                                <td className="border px-2 py-1 font-mono uppercase text-xs text-blue-700">{method}</td>
+                                <td className="border px-2 py-1 font-mono">{path}</td>
+                                <td className="border px-2 py-1">{op.summary || op.description || <span className="text-gray-400">No summary</span>}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+            <TabsContent value="raw">
+              <pre className="border p-4 rounded bg-gray-50 overflow-auto max-h-96 text-sm">
+                <code className="language-yaml">
+                  {contentItem.content}
+                </code>
+              </pre>
+            </TabsContent>
+          </Tabs>
+        );
+
       default:
         return <div>Unsupported content type</div>;
     }
@@ -387,6 +514,19 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
         </CardHeader>
         <CardContent>
           {renderContent()}
+          {/* Skipped files UI */}
+          {skippedFiles.filter(f => f.repoId === contentItem.repoId).length > 0 && (
+            <div className="mt-6">
+              <div className="font-semibold text-sm mb-2 text-red-700">Skipped Files in this Repository</div>
+              <ul className="text-xs bg-red-50 border border-red-200 rounded p-2">
+                {skippedFiles.filter(f => f.repoId === contentItem.repoId).map(f => (
+                  <li key={getUUID()} className="mb-1">
+                    <span className="font-mono text-gray-700">{f.name}</span>: <span className="text-gray-600">{f.reason}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </CardContent>
       </Card>
   );
