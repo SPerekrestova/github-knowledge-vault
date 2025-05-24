@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ContentType, Repository } from '@/types';
+import { ContentType } from '@/types';
 import { Sidebar } from '@/components/Sidebar';
 import { FilterBar } from '@/components/FilterBar';
 import { RepoCard } from '@/components/RepoCard';

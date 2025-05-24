@@ -67,7 +67,7 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
 
           // Validate content
           if (!contentItem.content) {
-            throw new Error('No content provided');
+              console.error('No content provided');
           }
 
           const content = contentItem.content.trim();
