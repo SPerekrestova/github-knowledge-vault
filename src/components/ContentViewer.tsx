@@ -162,12 +162,12 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
   const renderContentTypeLabel = (type: ContentType) => {
     switch (type) {
       case 'markdown':
-        return <Badge className="bg-blue-100 text-blue-800">Documentation</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-300 text-xs px-2 py-1 rounded-full">Documentation</Badge>;
       case 'mermaid':
-        return <Badge className="bg-green-100 text-green-800">Diagram</Badge>;
+        return <Badge className="bg-green-100 text-green-800 border-green-300 text-xs px-2 py-1 rounded-full">Diagram</Badge>;
       case 'postman':
       case 'openapi':
-        return <Badge className="bg-purple-100 text-purple-800">API Collection</Badge>;
+        return <Badge className="bg-purple-100 text-purple-800 border-purple-300 text-xs px-2 py-1 rounded-full">API Collection</Badge>;
       default:
         return null;
     }
@@ -178,12 +178,12 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
       const collection = JSON.parse(jsonString);
 
       return (
-          <div className="space-y-6">
+          <div className="space-y-6 text-gray-700">
             {/* Collection Info */}
             <div className="border-l-4 border-purple-500 pl-4">
-              <h3 className="text-lg font-semibold">{collection.info?.name}</h3>
+              <h3 className="text-xl font-semibold text-gray-800">{collection.info?.name}</h3>
               {collection.info?.description && (
-                <div className="prose prose-sm max-w-none text-gray-600">
+                <div className="prose prose-sm max-w-none text-gray-600 mt-2">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {collection.info.description}
                   </ReactMarkdown>
@@ -197,12 +197,12 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
             {/* Variables */}
             {collection.variable && collection.variable.length > 0 && (
                 <div>
-                  <h4 className="font-medium mb-2">Variables</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <h4 className="font-semibold mb-3 text-gray-800">Variables</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {collection.variable.map((variable: any, index: number) => (
-                        <div key={index} className="bg-gray-50 p-2 rounded text-sm">
-                          <span className="font-mono text-purple-600">{variable.key}</span>
-                          {variable.value && <span className="ml-2 text-gray-600">= {variable.value}</span>}
+                        <div key={index} className="bg-gray-100 p-3 rounded-md text-sm">
+                          <span className="font-mono text-purple-700 font-medium">{variable.key}</span>
+                          {variable.value && <span className="ml-2 text-gray-700 break-words">= {variable.value}</span>}
                         </div>
                     ))}
                   </div>
@@ -211,12 +211,12 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
 
             {/* Requests */}
             <div>
-              <h4 className="font-medium mb-3">Requests ({collection.item?.length || 0})</h4>
-              <div className="space-y-3">
+              <h4 className="font-semibold mb-4 text-gray-800">Requests ({collection.item?.length || 0})</h4>
+              <div className="space-y-4">
                 {collection.item?.map((item: any, index: number) => (
-                    <div key={index} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center justify-between mb-2">
-                        <h5 className="font-medium">{item.name}</h5>
+                    <div key={index} className="border rounded-lg p-4 bg-white shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <h5 className="font-medium text-gray-800">{item.name}</h5>
                         <Badge
                             variant={getMethodVariant(item.request?.method)}
                             className="text-xs"
@@ -226,7 +226,7 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
                       </div>
 
                       {item.request?.url && (
-                          <div className="font-mono text-sm bg-gray-100 p-2 rounded mb-2">
+                          <div className="font-mono text-sm bg-gray-50 p-3 rounded mb-3 break-all">
                             {typeof item.request.url === 'string'
                                 ? item.request.url
                                 : item.request.url.raw || item.request.url.host?.join('.') + item.request.url.path?.join('/')
@@ -235,7 +235,7 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
                       )}
 
                       {item.request?.description && (
-                        <div className="prose prose-sm max-w-none text-gray-600 mb-2">
+                        <div className="prose prose-sm max-w-none text-gray-600 mb-3">
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>
                             {item.request.description}
                           </ReactMarkdown>
@@ -244,12 +244,12 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
 
                       {/* Headers */}
                       {item.request?.header && item.request.header.length > 0 && (
-                          <div className="mt-2">
-                            <span className="text-xs font-medium text-gray-500">Headers:</span>
-                            <div className="mt-1 space-y-1">
+                          <div className="mt-3">
+                            <span className="text-sm font-medium text-gray-700">Headers:</span>
+                            <div className="mt-2 space-y-2">
                               {item.request.header.map((header: any, headerIndex: number) => (
-                                  <div key={headerIndex} className="text-xs font-mono bg-blue-50 p-1 rounded">
-                                    {header.key}: {header.value}
+                                  <div key={headerIndex} className="text-xs font-mono bg-blue-50 p-2 rounded break-words">
+                                    <span className="font-semibold">{header.key}</span>: {header.value}
                                   </div>
                               ))}
                             </div>
@@ -257,10 +257,10 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
                       )}
 
                       {/* Body */}
-                      {item.request?.body && (
-                          <div className="mt-2">
-                            <span className="text-xs font-medium text-gray-500">Body:</span>
-                            <div className="mt-1 text-xs font-mono bg-yellow-50 p-2 rounded max-h-20 overflow-y-auto">
+                      {item.request?.body && (item.request.body.raw || item.request.body.formdata || item.request.body.urlencoded) && (
+                          <div className="mt-3">
+                            <span className="text-sm font-medium text-gray-700">Body:</span>
+                            <div className="mt-2 text-xs font-mono bg-yellow-50 p-3 rounded max-h-40 overflow-y-auto break-all">
                               {item.request.body.raw || JSON.stringify(item.request.body, null, 2)}
                             </div>
                           </div>
@@ -268,17 +268,22 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
 
                       {/* Responses with markdown description */}
                       {item.response && Array.isArray(item.response) && item.response.length > 0 && (
-                        <div className="mt-2">
-                          <span className="text-xs font-medium text-gray-500">Responses:</span>
-                          <div className="mt-1 space-y-2">
+                        <div className="mt-3">
+                          <span className="text-sm font-medium text-gray-700">Responses:</span>
+                          <div className="mt-2 space-y-3">
                             {item.response.map((resp: any, respIdx: number) => (
-                              <div key={respIdx} className="border rounded bg-gray-50 p-2">
-                                <div className="font-mono text-xs text-purple-700 mb-1">{resp.name || resp.code || 'Response'}</div>
+                              <div key={respIdx} className="border rounded bg-gray-100 p-3">
+                                <div className="font-mono text-sm text-purple-800 font-semibold mb-2">{resp.name || resp.code || 'Response'}</div>
                                 {resp.description && (
                                   <div className="prose prose-xs max-w-none text-gray-600">
                                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                       {resp.description}
                                     </ReactMarkdown>
+                                  </div>
+                                )}
+                                {resp.body && (
+                                  <div className="mt-2 text-xs font-mono bg-gray-50 p-2 rounded max-h-20 overflow-y-auto break-all">
+                                    {typeof resp.body === 'string' ? resp.body : JSON.stringify(resp.body, null, 2)}
                                   </div>
                                 )}
                               </div>
@@ -322,51 +327,52 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
     switch (contentItem.type) {
       case 'markdown':
         return (
-            <div className="prose prose-sm max-w-none">
-              <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    code({ node, inline, className, children, ...props }: {
-                      node: any;
-                      inline?: boolean;
-                      className?: string;
-                      children: React.ReactNode;
-                    } & React.HTMLAttributes<HTMLElement>): ReactElement {
-                      const match = /language-(\w+)/.exec(className || '');
-                      return !inline && match ? (
-                          <pre className={className}>
-                            <code className={className} {...props}>
-                              {children}
-                            </code>
-                          </pre>
-                      ) : (
-                          <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono" {...props}>
-                            {children}
-                          </code>
-                      );
-                    },
-                    table: ({ children }) => (
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full border-collapse border border-gray-300">
-                            {children}
-                          </table>
-                        </div>
-                    ),
-                    th: ({ children }) => (
-                        <th className="border border-gray-300 px-4 py-2 bg-gray-50 font-medium text-left">
+          <div className="prose dark:prose-invert max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                code({ node, inline, className, children, ...props }: {
+                  node: any;
+                  inline?: boolean;
+                  className?: string;
+                  children: React.ReactNode;
+                } & React.HTMLAttributes<HTMLElement>): ReactElement {
+                  const match = /language-(\w+)/.exec(className || '');
+                  return !inline && match ? (
+                      <pre className="p-4 rounded-md bg-gray-100 text-sm overflow-x-auto">
+                        <code className={className} {...props}>
                           {children}
-                        </th>
-                    ),
-                    td: ({ children }) => (
-                        <td className="border border-gray-300 px-4 py-2">
-                          {children}
-                        </td>
-                    ),
-                  }}
-              >
-                {contentItem.content}
-              </ReactMarkdown>
-            </div>
+                        </code>
+                      </pre>
+                  ) : (
+                      <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono" {...props}>
+                        {children}
+                      </code>
+                  );
+                },
+                table: ({ children }) => (
+                    <div className="overflow-x-auto my-4">
+                      <table className="min-w-full border-collapse border border-gray-300">
+                        {children}
+                      </table>
+                    </div>
+                ),
+                th: ({ children }) => (
+                    <th className="border border-gray-300 px-4 py-2 bg-gray-100 font-semibold text-left text-sm">
+                      {children}
+                    </th>
+                ),
+                td: ({ children }) => (
+                    <td className="border border-gray-300 px-4 py-2 text-sm">
+                      {children}
+                    </td>
+                ),
+                // Add more component overrides for other markdown elements like headings, lists, etc. if needed
+              }}
+            >
+              {contentItem.content}
+            </ReactMarkdown>
+          </div>
         );
 
       case 'mermaid':
@@ -502,19 +508,19 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
   };
 
   return (
-      <Card className="shadow-sm content-transition">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>{contentItem.name}</CardTitle>
-            <div className="text-sm text-gray-500 mt-1">
-              Last updated: {formatDate(contentItem.lastUpdated)}
-            </div>
-          </div>
+    <Card className="border-gray-200 shadow-sm rounded-lg overflow-hidden">
+      <CardHeader className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+        <CardTitle className="text-2xl font-semibold text-gray-800">{contentItem.name}</CardTitle>
+        <div className="flex items-center space-x-3 text-sm text-gray-600 mt-1">
+          {contentItem.lastUpdated && (
+            <span>Updated {formatDate(contentItem.lastUpdated)}</span>
+          )}
           {renderContentTypeLabel(contentItem.type)}
-        </CardHeader>
-        <CardContent>
-          {renderContent()}
-        </CardContent>
-      </Card>
+        </div>
+      </CardHeader>
+      <CardContent className="p-6">
+        {renderContent()}
+      </CardContent>
+    </Card>
   );
 };

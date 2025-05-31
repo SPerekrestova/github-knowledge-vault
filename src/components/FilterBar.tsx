@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { ContentType } from '@/types';
+import { cn } from '@/lib/utils';
 
 interface FilterBarProps {
   onSearch: (query: string) => void;
@@ -48,12 +48,12 @@ export const FilterBar = ({
   };
 
   return (
-    <div className="flex flex-col md:flex-row justify-between items-center p-4 border-b bg-white">
+    <div className="flex flex-col md:flex-row justify-between items-center px-6 py-3 border-b bg-gray-50">
       <div className="flex items-center mb-4 md:mb-0">
-        <h2 className="text-xl font-semibold">
+        <h2 className="text-lg font-semibold text-gray-800">
           {activeRepoName ? activeRepoName : 'All Repositories'}
           {activeContentType && (
-            <span className="ml-2 text-sm font-normal bg-blue-100 text-blue-800 py-1 px-2 rounded">
+            <span className="ml-3 text-sm font-normal bg-blue-100 text-blue-800 py-1 px-2 rounded-full border border-blue-300">
               {formatContentType(activeContentType)}
             </span>
           )}
@@ -65,9 +65,9 @@ export const FilterBar = ({
           variant="outline"
           size="sm"
           disabled={isRefreshing}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 text-gray-600 border-gray-300 hover:bg-gray-100"
         >
-          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={cn("h-4 w-4", isRefreshing ? 'animate-spin' : '')} />
           Refresh
         </Button>
         <div className="w-full md:w-80">
@@ -76,7 +76,7 @@ export const FilterBar = ({
             placeholder="Search documentation..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full"
+            className="w-full px-3 py-2 text-sm"
           />
         </div>
       </div>
