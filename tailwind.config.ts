@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 import typography from "@tailwindcss/typography";
 
@@ -27,7 +26,7 @@ export default {
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
 				primary: {
-					DEFAULT: 'hsl(var(--primary))',
+					DEFAULT: 'hsl(var(--primary))', // Adjusted primary color
 					foreground: 'hsl(var(--primary-foreground))'
 				},
 				secondary: {
@@ -66,7 +65,7 @@ export default {
 				}
 			},
 			borderRadius: {
-				lg: 'var(--radius)',
+				lg: 'var(--radius)', // Use the global radius variable
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)'
 			},

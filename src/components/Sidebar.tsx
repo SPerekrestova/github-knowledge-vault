@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRepos } from '@/hooks/useRepos';
 import { ContentType } from '@/types';
 import { cn } from '@/lib/utils';
+import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 
 interface SidebarProps {
   activeRepoId: string | null;
@@ -30,67 +31,73 @@ export const Sidebar = ({
   return (
     <div 
       className={cn(
-        "flex flex-col h-screen transition-all duration-300 bg-sidebar text-sidebar-foreground border-r border-sidebar-border",
+        "flex flex-col h-screen transition-all duration-300 bg-white text-gray-700 border-r border-gray-200",
         isCollapsed ? "w-16" : "w-64"
       )}
     >
-      <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
-        <h2 className={cn("font-semibold", isCollapsed ? "hidden" : "block")}>
-          Knowledge Base
-        </h2>
+      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+        {!isCollapsed && (
+          <h2 className="font-bold text-xl text-gray-800">Knowledge Base</h2>
+        )}
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1 rounded hover:bg-sidebar-accent"
+          className={cn(
+            "p-1 rounded hover:bg-gray-200 text-gray-600 transition-colors",
+            isCollapsed ? "w-full text-center" : ""
+          )}
         >
-          {isCollapsed ? "→" : "←"}
+          {isCollapsed ? <ChevronRightIcon className="h-5 w-5" /> : <ChevronLeftIcon className="h-5 w-5" />}
         </button>
       </div>
       
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto px-4 py-6 text-gray-700">
         {/* All Content button */}
-        <div className="p-4">
+        <div className="mb-6">
           <button
             onClick={onReset}
             className={cn(
-              "flex items-center w-full p-2 rounded transition-colors",
+              "flex items-center w-full px-3 py-2 rounded-md transition-colors text-left text-sm",
               !activeRepoId && !activeContentType 
-                ? "bg-sidebar-primary text-sidebar-primary-foreground" 
-                : "hover:bg-sidebar-accent"
+                ? "bg-blue-600 text-white hover:bg-blue-700 font-semibold"
+                : "hover:bg-gray-100",
+              isCollapsed ? "justify-center px-0" : ""
             )}
           >
-            <span className={cn("text-left", isCollapsed ? "hidden" : "block")}>All Content</span>
+            {!isCollapsed && <span>All Content</span>}
             {isCollapsed && <span>All</span>}
           </button>
         </div>
 
         {/* Content Type Filters */}
-        <div className={cn("p-4 border-t border-sidebar-border", isCollapsed ? "hidden" : "block")}>
-          <h3 className="text-xs uppercase text-sidebar-foreground/70 mb-2">Content Types</h3>
+        <div className={cn("border-t border-gray-200 pt-6", isCollapsed ? "hidden" : "block")}>
+          <h3 className="text-xs uppercase font-bold text-gray-500 mb-4">Content Types</h3>
           {contentTypes.map((type) => (
             <button
               key={type.id}
               onClick={() => onContentTypeSelect(type.id === activeContentType ? null : type.id)}
               className={cn(
-                "flex items-center w-full p-2 rounded transition-colors mb-1",
+                "flex items-center w-full px-3 py-2 rounded-md transition-colors mb-1 text-left text-sm",
                 activeContentType === type.id
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "hover:bg-sidebar-accent"
+                  ? "bg-blue-600 text-white hover:bg-blue-700 font-semibold"
+                  : "hover:bg-gray-100",
+                isCollapsed ? "justify-center px-0" : ""
               )}
             >
-              <span>{type.label}</span>
+              {!isCollapsed && <span>{type.label}</span>}
+              {isCollapsed && <span>{type.label.charAt(0)}</span>}
             </button>
           ))}
         </div>
 
         {/* Repositories */}
-        <div className="p-4 border-t border-sidebar-border">
-          <h3 className={cn("text-xs uppercase text-sidebar-foreground/70 mb-2", isCollapsed ? "hidden" : "block")}>
+        <div className="border-t border-gray-200 pt-6 mt-4">
+          <h3 className={cn("text-xs uppercase font-bold text-gray-500 mb-4", isCollapsed ? "hidden" : "block")}>
             Repositories
           </h3>
           
           {loading ? (
             <div className="flex justify-center p-4">
-              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-sidebar-primary"></div>
+              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-600"></div>
             </div>
           ) : (
             <div>
@@ -99,16 +106,16 @@ export const Sidebar = ({
                   key={repo.id}
                   onClick={() => onRepoSelect(repo.id === activeRepoId ? null : repo.id)}
                   className={cn(
-                    "flex items-center w-full p-2 rounded transition-colors mb-1",
+                    "flex items-center w-full px-3 py-2 rounded-md transition-colors mb-1 text-left text-sm",
                     activeRepoId === repo.id
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "hover:bg-sidebar-accent",
-                    isCollapsed && "justify-center"
+                      ? "bg-blue-600 text-white hover:bg-blue-700 font-semibold"
+                      : "hover:bg-gray-100",
+                    isCollapsed && "justify-center px-0"
                   )}
                   title={isCollapsed ? repo.name : undefined}
                 >
                   {isCollapsed ? (
-                    <span>{repo.name.charAt(0)}</span>
+                    <span className="font-medium">{repo.name.charAt(0)}</span>
                   ) : (
                     <span className="truncate">{repo.name}</span>
                   )}
