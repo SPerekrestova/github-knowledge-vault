@@ -10,6 +10,8 @@ import Prism from 'prismjs';
 import { ReactElement } from 'react';
 import { skippedFiles } from '@/utils/githubService';
 import yaml from 'js-yaml';
+import { Expand } from 'lucide-react';
+import { DiagramModal } from '@/components/DiagramModal';
 
 // Import Prism CSS and additional languages
 import 'prismjs/themes/prism-tomorrow.css';
@@ -43,6 +45,9 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
     mermaidDiagramCounter += 1;
     return `mermaid_diagram_${mermaidDiagramCounter}`;
   });
+
+  // Modal state
+  const [isDiagramModalOpen, setIsDiagramModalOpen] = useState(false);
 
   // Initialize Mermaid only once
   useEffect(() => {
@@ -116,7 +121,12 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
                 setMermaidLoading(false);
                 if (mermaidRef.current) {
                   mermaidRef.current.innerHTML = `
-                    <div class=\"text-red-500 p-4 border border-red-200 rounded bg-red-50\">\n                      <p class=\"font-medium\">Diagram rendering failed</p>\n                      <p class=\"text-sm mt-1\">${error.message}</p>\n                      <pre class=\"mt-2 text-xs bg-gray-100 p-2 rounded overflow-x-auto\">${contentItem.content}</pre>\n                    </div>\n                  `;
+                    <div class="text-red-500 p-4 border border-red-200 rounded bg-red-50">
+                      <p class="font-medium">Diagram rendering failed</p>
+                      <p class="text-sm mt-1">${error.message}</p>
+                      <pre class="mt-2 text-xs bg-gray-100 p-2 rounded overflow-x-auto">${contentItem.content}</pre>
+                    </div>
+                  `;
                 }
               }
             }
@@ -128,7 +138,12 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
             setMermaidLoading(false);
             if (mermaidRef.current) {
               mermaidRef.current.innerHTML = `
-                <div class=\"text-red-500 p-4 border border-red-200 rounded bg-red-50\">\n                  <p class=\"font-medium\">Diagram rendering failed</p>\n                  <p class=\"text-sm mt-1\">${error.message}</p>\n                  <pre class=\"mt-2 text-xs bg-gray-100 p-2 rounded overflow-x-auto\">${contentItem.content}</pre>\n                </div>\n              `;
+                <div class="text-red-500 p-4 border border-red-200 rounded bg-red-50">
+                  <p class="font-medium">Diagram rendering failed</p>
+                  <p class="text-sm mt-1">${error.message}</p>
+                  <pre class="mt-2 text-xs bg-gray-100 p-2 rounded overflow-x-auto">${contentItem.content}</pre>
+                </div>
+              `;
             }
           }
         }
@@ -183,11 +198,11 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
             <div className="border-l-4 border-purple-500 pl-4">
               <h3 className="text-xl font-semibold text-gray-800">{collection.info?.name}</h3>
               {collection.info?.description && (
-                <div className="prose prose-sm max-w-none text-gray-600 mt-2">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {collection.info.description}
-                  </ReactMarkdown>
-                </div>
+                  <div className="prose prose-sm max-w-none text-gray-600 mt-2">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {collection.info.description}
+                    </ReactMarkdown>
+                  </div>
               )}
               {collection.info?.version && (
                   <Badge variant="outline" className="mt-2">v{collection.info.version}</Badge>
@@ -235,11 +250,11 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
                       )}
 
                       {item.request?.description && (
-                        <div className="prose prose-sm max-w-none text-gray-600 mb-3">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {item.request.description}
-                          </ReactMarkdown>
-                        </div>
+                          <div className="prose prose-sm max-w-none text-gray-600 mb-3">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {item.request.description}
+                            </ReactMarkdown>
+                          </div>
                       )}
 
                       {/* Headers */}
@@ -268,28 +283,28 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
 
                       {/* Responses with markdown description */}
                       {item.response && Array.isArray(item.response) && item.response.length > 0 && (
-                        <div className="mt-3">
-                          <span className="text-sm font-medium text-gray-700">Responses:</span>
-                          <div className="mt-2 space-y-3">
-                            {item.response.map((resp: any, respIdx: number) => (
-                              <div key={respIdx} className="border rounded bg-gray-100 p-3">
-                                <div className="font-mono text-sm text-purple-800 font-semibold mb-2">{resp.name || resp.code || 'Response'}</div>
-                                {resp.description && (
-                                  <div className="prose prose-xs max-w-none text-gray-600">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                      {resp.description}
-                                    </ReactMarkdown>
+                          <div className="mt-3">
+                            <span className="text-sm font-medium text-gray-700">Responses:</span>
+                            <div className="mt-2 space-y-3">
+                              {item.response.map((resp: any, respIdx: number) => (
+                                  <div key={respIdx} className="border rounded bg-gray-100 p-3">
+                                    <div className="font-mono text-sm text-purple-800 font-semibold mb-2">{resp.name || resp.code || 'Response'}</div>
+                                    {resp.description && (
+                                        <div className="prose prose-xs max-w-none text-gray-600">
+                                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            {resp.description}
+                                          </ReactMarkdown>
+                                        </div>
+                                    )}
+                                    {resp.body && (
+                                        <div className="mt-2 text-xs font-mono bg-gray-50 p-2 rounded max-h-20 overflow-y-auto break-all">
+                                          {typeof resp.body === 'string' ? resp.body : JSON.stringify(resp.body, null, 2)}
+                                        </div>
+                                    )}
                                   </div>
-                                )}
-                                {resp.body && (
-                                  <div className="mt-2 text-xs font-mono bg-gray-50 p-2 rounded max-h-20 overflow-y-auto break-all">
-                                    {typeof resp.body === 'string' ? resp.body : JSON.stringify(resp.body, null, 2)}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
+                              ))}
+                            </div>
                           </div>
-                        </div>
                       )}
                     </div>
                 ))}
@@ -327,86 +342,108 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
     switch (contentItem.type) {
       case 'markdown':
         return (
-          <div className="prose dark:prose-invert max-w-none">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                code({ node, inline, className, children, ...props }: {
-                  node: any;
-                  inline?: boolean;
-                  className?: string;
-                  children: React.ReactNode;
-                } & React.HTMLAttributes<HTMLElement>): ReactElement {
-                  const match = /language-(\w+)/.exec(className || '');
-                  return !inline && match ? (
-                      <pre className="p-4 rounded-md bg-gray-100 text-sm overflow-x-auto">
+            <div className="prose dark:prose-invert max-w-none">
+              <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    code({ node, inline, className, children, ...props }: {
+                      node: any;
+                      inline?: boolean;
+                      className?: string;
+                      children: React.ReactNode;
+                    } & React.HTMLAttributes<HTMLElement>): ReactElement {
+                      const match = /language-(\w+)/.exec(className || '');
+                      return !inline && match ? (
+                          <pre className="p-4 rounded-md bg-gray-100 text-sm overflow-x-auto">
                         <code className={className} {...props}>
                           {children}
                         </code>
                       </pre>
-                  ) : (
-                      <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono" {...props}>
-                        {children}
-                      </code>
-                  );
-                },
-                table: ({ children }) => (
-                    <div className="overflow-x-auto my-4">
-                      <table className="min-w-full border-collapse border border-gray-300">
-                        {children}
-                      </table>
-                    </div>
-                ),
-                th: ({ children }) => (
-                    <th className="border border-gray-300 px-4 py-2 bg-gray-100 font-semibold text-left text-sm">
-                      {children}
-                    </th>
-                ),
-                td: ({ children }) => (
-                    <td className="border border-gray-300 px-4 py-2 text-sm">
-                      {children}
-                    </td>
-                ),
-                // Add more component overrides for other markdown elements like headings, lists, etc. if needed
-              }}
-            >
-              {contentItem.content}
-            </ReactMarkdown>
-          </div>
+                      ) : (
+                          <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono" {...props}>
+                            {children}
+                          </code>
+                      );
+                    },
+                    table: ({ children }) => (
+                        <div className="overflow-x-auto my-4">
+                          <table className="min-w-full border-collapse border border-gray-300">
+                            {children}
+                          </table>
+                        </div>
+                    ),
+                    th: ({ children }) => (
+                        <th className="border border-gray-300 px-4 py-2 bg-gray-100 font-semibold text-left text-sm">
+                          {children}
+                        </th>
+                    ),
+                    td: ({ children }) => (
+                        <td className="border border-gray-300 px-4 py-2 text-sm">
+                          {children}
+                        </td>
+                    ),
+                    // Add more component overrides for other markdown elements like headings, lists, etc. if needed
+                  }}
+              >
+                {contentItem.content}
+              </ReactMarkdown>
+            </div>
         );
 
       case 'mermaid':
         return (
-            <div className="mermaid-container" style={{ maxWidth: '100%', overflowX: 'auto', padding: 8 }}>
-              {mermaidLoading && (
-                  <div className="flex justify-center items-center h-40">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-                  </div>
-              )}
-              <div
-                  ref={mermaidRef}
-                  className="mermaid-wrapper"
-                  id={`mermaid-container-${uniqueId}`}
-                  style={{ minHeight: mermaidLoading ? '0' : 'auto', maxWidth: '100%', maxHeight: 400, overflowX: 'auto', overflowY: 'auto' }}
-              />
-              {mermaidError && (
-                  <div className="text-red-500 mt-4">
-                    Error: {mermaidError}
-                  </div>
-              )}
+            <div className="relative">
+              <div className="absolute top-2 right-2 z-10">
+                <button
+                    onClick={() => setIsDiagramModalOpen(true)}
+                    className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-100 transition-colors"
+                    title="View fullscreen"
+                >
+                  <Expand className="h-4 w-4 text-gray-600" />
+                </button>
+              </div>
+              <div className="mermaid-container" style={{ maxWidth: '100%', overflowX: 'auto', padding: 8 }}>
+                {mermaidLoading && (
+                    <div className="flex justify-center items-center h-40">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+                    </div>
+                )}
+                <div
+                    ref={mermaidRef}
+                    className="mermaid-wrapper"
+                    id={`mermaid-container-${uniqueId}`}
+                    style={{ minHeight: mermaidLoading ? '0' : 'auto', maxWidth: '100%', maxHeight: 400, overflowX: 'auto', overflowY: 'auto' }}
+                />
+                {mermaidError && (
+                    <div className="text-red-500 mt-4">
+                      Error: {mermaidError}
+                    </div>
+                )}
+              </div>
             </div>
         );
 
       case 'svg':
         // Render SVG as an <img> using data URL
         return (
-          <div className="flex justify-center items-center">
-            <img
-              src={`data:image/svg+xml;base64,${btoa(contentItem.content)}`}
-              alt={contentItem.name}
-              style={{ maxWidth: '100%', maxHeight: 400, display: 'block' }}
-            />
-          </div>
+            <div className="relative">
+              <div className="absolute top-2 right-2 z-10">
+                <button
+                    onClick={() => setIsDiagramModalOpen(true)}
+                    className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-100 transition-colors"
+                    title="View fullscreen"
+                >
+                  <Expand className="h-4 w-4 text-gray-600" />
+                </button>
+              </div>
+              <div className="flex justify-center items-center">
+                <img
+                    src={`data:image/svg+xml;base64,${btoa(contentItem.content)}`}
+                    alt={contentItem.name}
+                    style={{ maxWidth: '100%', maxHeight: 400, display: 'block' }}
+                />
+              </div>
+            </div>
         );
 
       case 'postman':
@@ -447,59 +484,59 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
           }
         } catch {}
         return (
-          <Tabs defaultValue="summary" className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="summary">Summary</TabsTrigger>
-              <TabsTrigger value="raw">Raw</TabsTrigger>
-            </TabsList>
-            <TabsContent value="summary">
-              <div className="space-y-4">
-                <div>
-                  <div className="font-semibold text-lg">{openapiSummary.title || 'OpenAPI Spec'}</div>
-                  {openapiSummary.version && <div className="text-sm text-gray-500">Version: {openapiSummary.version}</div>}
-                  {openapiSummary.description && <div className="text-gray-700 mt-2">{openapiSummary.description}</div>}
-                  {!(openapiSummary.title || openapiSummary.version || openapiSummary.description) && (
-                    <div className="text-gray-500">No summary info found in OpenAPI spec.</div>
+            <Tabs defaultValue="summary" className="w-full">
+              <TabsList className="mb-4">
+                <TabsTrigger value="summary">Summary</TabsTrigger>
+                <TabsTrigger value="raw">Raw</TabsTrigger>
+              </TabsList>
+              <TabsContent value="summary">
+                <div className="space-y-4">
+                  <div>
+                    <div className="font-semibold text-lg">{openapiSummary.title || 'OpenAPI Spec'}</div>
+                    {openapiSummary.version && <div className="text-sm text-gray-500">Version: {openapiSummary.version}</div>}
+                    {openapiSummary.description && <div className="text-gray-700 mt-2">{openapiSummary.description}</div>}
+                    {!(openapiSummary.title || openapiSummary.version || openapiSummary.description) && (
+                        <div className="text-gray-500">No summary info found in OpenAPI spec.</div>
+                    )}
+                  </div>
+                  {/* Endpoints Table */}
+                  {parsed && parsed.paths && typeof parsed.paths === 'object' && Object.keys(parsed.paths).length > 0 && (
+                      <div>
+                        <div className="font-semibold text-base mb-2 mt-4">Endpoints</div>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full border border-gray-200 text-sm">
+                            <thead>
+                            <tr className="bg-gray-50">
+                              <th className="border px-2 py-1 text-left">Method</th>
+                              <th className="border px-2 py-1 text-left">Path</th>
+                              <th className="border px-2 py-1 text-left">Summary</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {Object.entries(parsed.paths).map(([path, methods]: [string, any]) =>
+                                Object.entries(methods).map(([method, op]: [string, any], idx: number) => (
+                                    <tr key={path + method} className="even:bg-gray-50">
+                                      <td className="border px-2 py-1 font-mono uppercase text-xs text-blue-700">{method}</td>
+                                      <td className="border px-2 py-1 font-mono">{path}</td>
+                                      <td className="border px-2 py-1">{op.summary || op.description || <span className="text-gray-400">No summary</span>}</td>
+                                    </tr>
+                                ))
+                            )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
                   )}
                 </div>
-                {/* Endpoints Table */}
-                {parsed && parsed.paths && typeof parsed.paths === 'object' && Object.keys(parsed.paths).length > 0 && (
-                  <div>
-                    <div className="font-semibold text-base mb-2 mt-4">Endpoints</div>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full border border-gray-200 text-sm">
-                        <thead>
-                          <tr className="bg-gray-50">
-                            <th className="border px-2 py-1 text-left">Method</th>
-                            <th className="border px-2 py-1 text-left">Path</th>
-                            <th className="border px-2 py-1 text-left">Summary</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Object.entries(parsed.paths).map(([path, methods]: [string, any]) =>
-                            Object.entries(methods).map(([method, op]: [string, any], idx: number) => (
-                              <tr key={path + method} className="even:bg-gray-50">
-                                <td className="border px-2 py-1 font-mono uppercase text-xs text-blue-700">{method}</td>
-                                <td className="border px-2 py-1 font-mono">{path}</td>
-                                <td className="border px-2 py-1">{op.summary || op.description || <span className="text-gray-400">No summary</span>}</td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-            <TabsContent value="raw">
+              </TabsContent>
+              <TabsContent value="raw">
               <pre className="border p-4 rounded bg-gray-50 overflow-auto max-h-96 text-sm">
                 <code className="language-yaml">
                   {contentItem.content}
                 </code>
               </pre>
-            </TabsContent>
-          </Tabs>
+              </TabsContent>
+            </Tabs>
         );
 
       default:
@@ -508,19 +545,32 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
   };
 
   return (
-    <Card className="border-gray-200 shadow-sm rounded-lg overflow-hidden">
-      <CardHeader className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-        <CardTitle className="text-2xl font-semibold text-gray-800">{contentItem.name}</CardTitle>
-        <div className="flex items-center space-x-3 text-sm text-gray-600 mt-1">
-          {contentItem.lastUpdated && (
-            <span>Updated {formatDate(contentItem.lastUpdated)}</span>
-          )}
-          {renderContentTypeLabel(contentItem.type)}
-        </div>
-      </CardHeader>
-      <CardContent className="p-6">
-        {renderContent()}
-      </CardContent>
-    </Card>
+      <>
+        <Card className="border-gray-200 shadow-sm rounded-lg overflow-hidden">
+          <CardHeader className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+            <CardTitle className="text-2xl font-semibold text-gray-800">{contentItem.name}</CardTitle>
+            <div className="flex items-center space-x-3 text-sm text-gray-600 mt-1">
+              {contentItem.lastUpdated && (
+                  <span>Updated {formatDate(contentItem.lastUpdated)}</span>
+              )}
+              {renderContentTypeLabel(contentItem.type)}
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            {renderContent()}
+          </CardContent>
+        </Card>
+
+        {/* Diagram Modal */}
+        {(contentItem.type === 'mermaid' || contentItem.type === 'svg') && (
+            <DiagramModal
+                isOpen={isDiagramModalOpen}
+                onClose={() => setIsDiagramModalOpen(false)}
+                diagramType={contentItem.type}
+                content={contentItem.content}
+                title={contentItem.name}
+            />
+        )}
+      </>
   );
 };
