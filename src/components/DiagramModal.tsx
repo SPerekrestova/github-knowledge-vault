@@ -32,68 +32,14 @@ export const DiagramModal = ({
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [lastPosition, setLastPosition] = useState({ x: 0, y: 0 });
-    const [initialScaleSet, setInitialScaleSet] = useState(false);
-
-    // Calculate optimal scale to fit diagram
-    const calculateFitScale = useCallback(() => {
-        if (!containerRef.current) return 1;
-
-        const container = containerRef.current;
-        const padding = 80; // Increased padding for better visibility
-        const containerWidth = container.clientWidth - padding * 2;
-        const containerHeight = container.clientHeight - padding * 2;
-
-        // Find the SVG element
-        const svgElement = container.querySelector('svg');
-        if (!svgElement) return 1;
-
-        // Get the actual bounding box
-        const bbox = svgElement.getBBox();
-        let svgWidth = bbox.width || 0;
-        let svgHeight = bbox.height || 0;
-
-        // Fallback to viewBox if bbox doesn't work
-        if (!svgWidth || !svgHeight) {
-            const viewBox = svgElement.getAttribute('viewBox');
-            if (viewBox) {
-                const [, , width, height] = viewBox.split(' ').map(Number);
-                svgWidth = width;
-                svgHeight = height;
-            }
-        }
-
-        // Final fallback to getBoundingClientRect
-        if (!svgWidth || !svgHeight) {
-            const rect = svgElement.getBoundingClientRect();
-            svgWidth = rect.width / scale; // Divide by current scale to get original size
-            svgHeight = rect.height / scale;
-        }
-
-        if (!svgWidth || !svgHeight) return 1;
-
-        // Calculate scale to fit both width and height
-        const scaleX = containerWidth / svgWidth;
-        const scaleY = containerHeight / svgHeight;
-
-        // Use the smaller scale to ensure the entire diagram fits
-        // Remove the limit of 1 to allow scaling up
-        let fitScale = Math.min(scaleX, scaleY);
-
-        // Ensure a minimum scale so diagrams aren't too small
-        fitScale = Math.max(fitScale, 0.5);
-
-        // Ensure it's within our min/max bounds
-        return Math.max(MIN_ZOOM, Math.min(fitScale, MAX_ZOOM));
-    }, [scale]);
 
     // Reset zoom and position when modal opens
     useEffect(() => {
         if (isOpen) {
-            setScale(1); // Start at 100%
+            setScale(1); // Always start at 100%
             setPosition({ x: 0, y: 0 });
             setMermaidLoading(true);
             setRenderedSvg('');
-            setInitialScaleSet(false);
         }
     }, [isOpen]);
 
@@ -147,46 +93,6 @@ export const DiagramModal = ({
         }
     }, [isOpen, diagramType, content]);
 
-    // Set initial scale after rendering
-    useEffect(() => {
-        if (!mermaidLoading && !mermaidError && renderedSvg && !initialScaleSet && containerRef.current) {
-            // Longer delay to ensure SVG is fully rendered and measured correctly
-            setTimeout(() => {
-                const fitScale = calculateFitScale();
-                console.log('Calculated fit scale:', fitScale); // Debug log
-                setScale(fitScale);
-                setInitialScaleSet(true);
-            }, 100);
-        }
-    }, [mermaidLoading, mermaidError, renderedSvg, initialScaleSet, calculateFitScale]);
-
-    // Also calculate fit scale for SVG images
-    useEffect(() => {
-        if (isOpen && diagramType === 'svg' && !initialScaleSet && containerRef.current) {
-            // Create a temporary image to get dimensions
-            const img = new Image();
-            img.onload = () => {
-                const container = containerRef.current;
-                if (!container) return;
-
-                const padding = 80;
-                const containerWidth = container.clientWidth - padding * 2;
-                const containerHeight = container.clientHeight - padding * 2;
-
-                const scaleX = containerWidth / img.width;
-                const scaleY = containerHeight / img.height;
-                let fitScale = Math.min(scaleX, scaleY);
-
-                // Ensure minimum scale
-                fitScale = Math.max(fitScale, 0.5);
-
-                setScale(Math.max(MIN_ZOOM, Math.min(fitScale, MAX_ZOOM)));
-                setInitialScaleSet(true);
-            };
-            img.src = `data:image/svg+xml;base64,${btoa(content)}`;
-        }
-    }, [isOpen, diagramType, content, initialScaleSet]);
-
     // Zoom handlers
     const handleZoomIn = useCallback(() => {
         setScale(prev => Math.min(prev + ZOOM_STEP, MAX_ZOOM));
@@ -197,13 +103,6 @@ export const DiagramModal = ({
     }, []);
 
     const handleReset = useCallback(() => {
-        const fitScale = calculateFitScale();
-        setScale(fitScale);
-        setPosition({ x: 0, y: 0 });
-    }, [calculateFitScale]);
-
-    // Fit to window handler (alternative to reset)
-    const handleFitToWindow = useCallback(() => {
         setScale(1);
         setPosition({ x: 0, y: 0 });
     }, []);
@@ -288,7 +187,7 @@ export const DiagramModal = ({
                     <button
                         onClick={handleReset}
                         className="p-2 hover:bg-gray-100 rounded transition-colors"
-                        title="Fit to screen"
+                        title="Reset zoom (100%)"
                     >
                         <RotateCcw className="h-4 w-4" />
                     </button>
@@ -357,9 +256,10 @@ export const DiagramModal = ({
                                     transformOrigin: 'center',
                                     transition: isDragging ? 'none' : 'transform 0.2s ease-out',
                                     cursor: isDragging ? 'grabbing' : (scale > 1 ? 'grab' : 'default'),
-                                    maxWidth: '100%',
-                                    maxHeight: '100%',
-                                    objectFit: 'contain'
+                                    maxWidth: 'none', // Remove max width constraint
+                                    maxHeight: 'none', // Remove max height constraint
+                                    width: 'auto',
+                                    height: 'auto'
                                 }}
                             />
                         </div>
