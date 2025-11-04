@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ContentType } from '@/types';
-import { githubService } from '@/utils/githubService';
+import { githubService, SkippedFile } from '@/utils/githubService';
 import { useDebounce } from './useDebounce';
 
 interface UseContentOptions {
@@ -22,23 +22,26 @@ export const useContent = (options: UseContentOptions = {}) => {
 
   // Fetch all content once and cache it
   const {
-    data: allContent = [],
+    data: allContentData,
     isLoading,
     error,
     isFetching: refreshing,
     refetch
   } = useQuery({
     queryKey: ['content', 'all'],
-    queryFn: githubService.getAllContent,
+    queryFn: githubService.getAllContentWithSkipped,
     staleTime: 5 * 60 * 1000, // Data is fresh for 5 minutes
     gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
+  const allContent = allContentData?.content || [];
+  const allSkippedFiles = allContentData?.skippedFilesByRepo || {};
+
   // Fetch specific repo content if repoId is provided (for performance)
   const {
-    data: repoContent = [],
+    data: repoContentData,
     isLoading: repoLoading,
     isFetching: repoRefreshing
   } = useQuery({
@@ -50,6 +53,9 @@ export const useContent = (options: UseContentOptions = {}) => {
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
+
+  const repoContent = repoContentData?.content || [];
+  const repoSkippedFiles = repoContentData?.skippedFiles || [];
 
   // Client-side filtering - happens in memory, no API calls
   const filteredContent = useMemo(() => {
@@ -88,12 +94,24 @@ export const useContent = (options: UseContentOptions = {}) => {
   const loading = repoId ? repoLoading : isLoading;
   const isRefreshing = repoId ? repoRefreshing : refreshing;
 
+  // Get skipped files for current repo
+  const currentSkippedFiles: SkippedFile[] = repoId
+    ? repoSkippedFiles
+    : [];
+
+  // Get all skipped files by repo
+  const skippedFilesByRepo = repoId
+    ? (repoContentData ? { [repoId]: repoSkippedFiles } : {})
+    : allSkippedFiles;
+
   return {
     content: filteredContent,
     loading,
     error: error ? 'Failed to fetch content. Please try again.' : null,
     refreshing: isRefreshing,
     refetch,
-    refresh: refetch
+    refresh: refetch,
+    skippedFiles: currentSkippedFiles,
+    skippedFilesByRepo
   };
 };

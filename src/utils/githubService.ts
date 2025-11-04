@@ -3,8 +3,18 @@ import {GitHubRepo} from "@/types/github.ts";
 import githubConfig from '@/config/github';
 import yaml from 'js-yaml';
 
-// Map to store skipped files per repo for UI display
-export const skippedFiles: { [repoId: string]: { name: string; path: string; reason: string }[] } = {};
+// Type for skipped file information
+export interface SkippedFile {
+  name: string;
+  path: string;
+  reason: string;
+}
+
+// Type for content fetch result with skipped files
+export interface ContentFetchResult {
+  content: ContentItem[];
+  skippedFiles: SkippedFile[];
+}
 
 export const githubService = {
 
@@ -137,14 +147,14 @@ export const githubService = {
     }
   },
 
-  getRepoContent: async (repoId: string): Promise<ContentItem[]> => {
+  getRepoContent: async (repoId: string): Promise<ContentFetchResult> => {
     // Get the repo name from the ID
     const repos = await githubService.getRepositories();
     const repo = repos.find(r => r.id === repoId);
     if (!repo) throw new Error('Repository not found');
 
-    // Clear skipped files for this repo
-    skippedFiles[repoId] = [];
+    const contentItems: ContentItem[] = [];
+    const skippedFilesList: SkippedFile[] = [];
 
     // Fetch docs folder contents
     let response: Response;
@@ -161,19 +171,18 @@ export const githubService = {
     } catch (error) {
       // Network or fetch error, skip this repo
       console.error(`Error fetching /doc folder for repo ${repo.name}:`, error);
-      return [];
+      return { content: [], skippedFiles: [] };
     }
 
     if (!response.ok) {
       // If the /doc folder is missing (404), skip this repo
       if (response.status === 404) {
-        return [];
+        return { content: [], skippedFiles: [] };
       }
       throw new Error(`Failed to fetch docs: ${response.status}`);
     }
 
     const files = await response.json();
-    const contentItems: ContentItem[] = [];
 
     // Process each file
     for (const file of files) {
@@ -250,7 +259,7 @@ export const githubService = {
             lastUpdated: new Date().toISOString()
           });
         } else if (skipReason) {
-          skippedFiles[repoId].push({
+          skippedFilesList.push({
             name: file.name,
             path: file.path,
             reason: skipReason
@@ -259,19 +268,37 @@ export const githubService = {
       }
     }
 
-    return contentItems;
+    return { content: contentItems, skippedFiles: skippedFilesList };
   },
 
-  // Get all content across all repositories
-  getAllContent: async (): Promise<ContentItem[]> => {
+  // Get all content across all repositories with skipped files
+  getAllContentWithSkipped: async (): Promise<{ content: ContentItem[]; skippedFilesByRepo: Record<string, SkippedFile[]> }> => {
     const repos = await githubService.getRepositories();
-    const allContentArrays = await Promise.all(
+    const allResults = await Promise.all(
         repos.map(async (repo) => {
-          return githubService.getRepoContent(repo.id);
+          const result = await githubService.getRepoContent(repo.id);
+          return { repoId: repo.id, ...result };
         })
     );
-    // Flatten the array of arrays
-    return allContentArrays.flat();
+
+    // Aggregate content and skipped files
+    const content: ContentItem[] = [];
+    const skippedFilesByRepo: Record<string, SkippedFile[]> = {};
+
+    allResults.forEach(result => {
+      content.push(...result.content);
+      if (result.skippedFiles.length > 0) {
+        skippedFilesByRepo[result.repoId] = result.skippedFiles;
+      }
+    });
+
+    return { content, skippedFilesByRepo };
+  },
+
+  // Get all content across all repositories (legacy method for backward compatibility)
+  getAllContent: async (): Promise<ContentItem[]> => {
+    const result = await githubService.getAllContentWithSkipped();
+    return result.content;
   },
 
   // Get content by type
