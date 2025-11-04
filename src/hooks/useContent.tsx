@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ContentItem, ContentType } from '@/types';
+import { ContentType } from '@/types';
 import { githubService } from '@/utils/githubService';
 import { useDebounce } from './useDebounce';
 
