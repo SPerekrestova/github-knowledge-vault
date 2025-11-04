@@ -9,31 +9,96 @@ export const skippedFiles: { [repoId: string]: { name: string; path: string; rea
 export const githubService = {
 
   getRepositories: async (): Promise<Repository[]> => {
-    const endpoint = githubConfig.ownerType === 'org'
-        ? `${githubConfig.apiBaseUrl}/orgs/${githubConfig.owner}/repos`
-        : `${githubConfig.apiBaseUrl}/user/repos`;
-    const response = await fetch(
-        endpoint,
-        {
+    // Use GitHub Search API to find repos with /doc folder in one query
+    // This is much more efficient than checking each repo individually (N+1 problem fix)
+    const ownerPrefix = githubConfig.ownerType === 'org' ? 'org' : 'user';
+    const searchQuery = `${ownerPrefix}:${githubConfig.owner} path:doc`;
+    const searchEndpoint = `${githubConfig.apiBaseUrl}/search/code?q=${encodeURIComponent(searchQuery)}&per_page=100`;
+
+    try {
+      const searchResponse = await fetch(searchEndpoint, {
+        headers: {
+          'Authorization': `token ${githubConfig.token}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+
+      if (searchResponse.ok) {
+        const searchData = await searchResponse.json();
+
+        // Extract unique repository names from search results
+        const repoNamesWithDoc = new Set(
+          searchData.items
+            ?.filter((item: any) => item.path === 'doc' || item.path.startsWith('doc/'))
+            .map((item: any) => item.repository.full_name.split('/')[1])
+        );
+
+        // Fetch repo details for repos with /doc folder
+        const endpoint = githubConfig.ownerType === 'org'
+          ? `${githubConfig.apiBaseUrl}/orgs/${githubConfig.owner}/repos?per_page=100`
+          : `${githubConfig.apiBaseUrl}/user/repos?per_page=100`;
+
+        const response = await fetch(endpoint, {
           headers: {
             'Authorization': `token ${githubConfig.token}`,
             'Accept': 'application/vnd.github.v3+json'
           }
+        });
+
+        if (!response.ok) {
+          throw new Error(`GitHub API error: ${response.status}`);
         }
-    );
+
+        const repos: GitHubRepo[] = await response.json();
+
+        // Filter repos that have /doc folder
+        return repos
+          .filter((repo: GitHubRepo) =>
+            repo.owner &&
+            repo.owner.login === githubConfig.owner &&
+            repoNamesWithDoc.has(repo.name)
+          )
+          .map((repo: GitHubRepo) => ({
+            id: repo.id.toString(),
+            name: repo.name,
+            description: repo.description || '',
+            url: repo.html_url,
+            hasDocFolder: true
+          }));
+      }
+    } catch (searchError) {
+      console.warn('Search API failed, falling back to individual checks:', searchError);
+    }
+
+    // Fallback: If search fails, use the old method but optimized with Promise.all
+    const endpoint = githubConfig.ownerType === 'org'
+      ? `${githubConfig.apiBaseUrl}/orgs/${githubConfig.owner}/repos?per_page=100`
+      : `${githubConfig.apiBaseUrl}/user/repos?per_page=100`;
+
+    const response = await fetch(endpoint, {
+      headers: {
+        'Authorization': `token ${githubConfig.token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
 
     if (!response.ok) {
       throw new Error(`GitHub API error: ${response.status}`);
     }
 
     const repos: GitHubRepo[] = await response.json();
+    const filteredRepos = repos.filter((repo: GitHubRepo) =>
+      repo.owner && repo.owner.login === githubConfig.owner
+    );
 
-    // Filter out repos where owner.login !== githubConfig.owner
-    const filteredRepos = repos.filter((repo: GitHubRepo) => repo.owner && repo.owner.login === githubConfig.owner);
+    // Parallel check for /doc folder (optimized with better batching)
+    const BATCH_SIZE = 10; // Process 10 repos at a time to avoid overwhelming the API
+    const reposWithDocs: Repository[] = [];
 
-    // Check each repo for docs folder
-    const reposWithDocs = await Promise.all(
-        filteredRepos.map(async (repo: GitHubRepo) => {
+    for (let i = 0; i < filteredRepos.length; i += BATCH_SIZE) {
+      const batch = filteredRepos.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.all(
+        batch.map(async (repo: GitHubRepo) => {
           const hasDocFolder = await githubService.checkDocsFolderExists(repo.name);
           return {
             id: repo.id.toString(),
@@ -43,9 +108,11 @@ export const githubService = {
             hasDocFolder: hasDocFolder
           };
         })
-    );
+      );
+      reposWithDocs.push(...batchResults.filter(repo => repo.hasDocFolder));
+    }
 
-    return reposWithDocs.filter(repo => repo.hasDocFolder);
+    return reposWithDocs;
   },
 
   checkDocsFolderExists: async (repoName: string): Promise<boolean> => {
@@ -217,12 +284,6 @@ export const githubService = {
   getContentById: async (contentId: string): Promise<ContentItem | null> => {
     const allContent = await githubService.getAllContent();
     return allContent.find(item => item.id === contentId) || null;
-  },
-
-  // TODO: Add refresh functionality to clear cache and fetch fresh data
-  refreshAllData: async (): Promise<void> => {
-    // No cache to clear: all data is always fetched fresh from GitHub
-    // This is a no-op for now, but can be extended if caching is added in the future
   }
 };
 
