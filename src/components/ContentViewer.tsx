@@ -12,6 +12,7 @@ import { skippedFiles } from '@/utils/githubService';
 import yaml from 'js-yaml';
 import { Expand } from 'lucide-react';
 import { DiagramModal } from '@/components/DiagramModal';
+import { CONSTANTS } from '@/constants';
 
 // Import Prism CSS and additional languages
 import 'prismjs/themes/prism-tomorrow.css';
@@ -109,7 +110,7 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
                   svgEl.style.width = '100%';
                   svgEl.style.height = 'auto';
                   svgEl.style.maxWidth = '100%';
-                  svgEl.style.maxHeight = '400px';
+                  svgEl.style.maxHeight = CONSTANTS.STYLES.MAX_DIAGRAM_HEIGHT;
                   svgEl.style.display = 'block';
                 }
                 setMermaidLoading(false);
@@ -412,7 +413,7 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
                     ref={mermaidRef}
                     className="mermaid-wrapper"
                     id={`mermaid-container-${uniqueId}`}
-                    style={{ minHeight: mermaidLoading ? '0' : 'auto', maxWidth: '100%', maxHeight: 400, overflowX: 'auto', overflowY: 'auto' }}
+                    style={{ minHeight: mermaidLoading ? '0' : 'auto', maxWidth: '100%', maxHeight: CONSTANTS.MAX_DIAGRAM_HEIGHT, overflowX: 'auto', overflowY: 'auto' }}
                 />
                 {mermaidError && (
                     <div className="text-red-500 mt-4">
@@ -440,7 +441,7 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
                 <img
                     src={`data:image/svg+xml;base64,${btoa(contentItem.content)}`}
                     alt={contentItem.name}
-                    style={{ maxWidth: '100%', maxHeight: 400, display: 'block' }}
+                    style={{ maxWidth: '100%', maxHeight: CONSTANTS.STYLES.MAX_DIAGRAM_HEIGHT, display: 'block' }}
                 />
               </div>
             </div>
