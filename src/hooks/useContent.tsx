@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { ContentType } from '@/types';
 import { githubService, SkippedFile } from '@/utils/githubService';
 import { useDebounce } from './useDebounce';
+import { APIError, NetworkError } from '@/utils/errors';
+import { CONSTANTS } from '@/constants';
 
 interface UseContentOptions {
   repoId?: string | null;
@@ -18,7 +20,7 @@ export const useContent = (options: UseContentOptions = {}) => {
   const { repoId = null, contentType = null, searchQuery = '' } = options;
 
   // Debounce search query to avoid excessive filtering
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const debouncedSearchQuery = useDebounce(searchQuery, CONSTANTS.SEARCH_DEBOUNCE_MS);
 
   // Fetch all content once and cache it
   const {
@@ -30,10 +32,10 @@ export const useContent = (options: UseContentOptions = {}) => {
   } = useQuery({
     queryKey: ['content', 'all'],
     queryFn: githubService.getAllContentWithSkipped,
-    staleTime: 5 * 60 * 1000, // Data is fresh for 5 minutes
+    staleTime: CONSTANTS.CACHE_TIME_MS, // Data is fresh for 5 minutes
     gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
     retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   const allContent = allContentData?.content || [];
@@ -48,10 +50,10 @@ export const useContent = (options: UseContentOptions = {}) => {
     queryKey: ['content', 'repo', repoId],
     queryFn: () => githubService.getRepoContent(repoId!),
     enabled: !!repoId, // Only fetch if repoId is provided
-    staleTime: 5 * 60 * 1000,
+    staleTime: CONSTANTS.CACHE_TIME_MS,
     gcTime: 30 * 60 * 1000,
     retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   const repoContent = repoContentData?.content || [];
@@ -104,10 +106,26 @@ export const useContent = (options: UseContentOptions = {}) => {
     ? (repoContentData ? { [repoId]: repoSkippedFiles } : {})
     : allSkippedFiles;
 
+  // Generate user-friendly error message based on error type
+  const getErrorMessage = (): string | null => {
+    if (!error) return null;
+
+    if (error instanceof APIError) {
+      return error.getUserMessage();
+    }
+
+    if (error instanceof NetworkError) {
+      return error.message;
+    }
+
+    // For other error types, return generic message
+    return CONSTANTS.ERROR_MESSAGES.FETCH_CONTENT;
+  };
+
   return {
     content: filteredContent,
     loading,
-    error: error ? 'Failed to fetch content. Please try again.' : null,
+    error: getErrorMessage(),
     refreshing: isRefreshing,
     refetch,
     refresh: refetch,

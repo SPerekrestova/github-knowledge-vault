@@ -2,6 +2,8 @@ import { Repository, ContentItem, ContentType } from '@/types';
 import {GitHubRepo} from "@/types/github.ts";
 import githubConfig from '@/config/github';
 import yaml from 'js-yaml';
+import { APIError, NetworkError } from './errors';
+import { CONSTANTS } from '@/constants';
 
 // Type for skipped file information
 export interface SkippedFile {
@@ -56,7 +58,7 @@ export const githubService = {
         });
 
         if (!response.ok) {
-          throw new Error(`GitHub API error: ${response.status}`);
+          throw await APIError.fromResponse(response);
         }
 
         const repos: GitHubRepo[] = await response.json();
@@ -93,7 +95,7 @@ export const githubService = {
     });
 
     if (!response.ok) {
-      throw new Error(`GitHub API error: ${response.status}`);
+      throw await APIError.fromResponse(response);
     }
 
     const repos: GitHubRepo[] = await response.json();
@@ -136,13 +138,23 @@ export const githubService = {
             }
           }
       );
-      if (!response.ok) {
+
+      // 404 means no doc folder, which is expected for some repos
+      if (response.status === CONSTANTS.HTTP_STATUS.NOT_FOUND) {
         return false;
       }
+
+      if (!response.ok) {
+        // Log other errors but don't throw (this is a check function)
+        console.warn(`Error checking doc folder for ${repoName}:`, response.status);
+        return false;
+      }
+
       const items = await response.json();
-      return Array.isArray(items) && items.some(item => item.name === 'doc' && item.type === 'dir');
+      return Array.isArray(items) && items.some(item => item.name === CONSTANTS.DOC_FOLDER_NAME && item.type === 'dir');
     } catch (error) {
-      // Silently handle errors and return false
+      // Log network errors but don't throw (this is a check function)
+      console.warn(`Network error checking doc folder for ${repoName}:`, error);
       return false;
     }
   },
@@ -151,7 +163,9 @@ export const githubService = {
     // Get the repo name from the ID
     const repos = await githubService.getRepositories();
     const repo = repos.find(r => r.id === repoId);
-    if (!repo) throw new Error('Repository not found');
+    if (!repo) {
+      throw new APIError(CONSTANTS.HTTP_STATUS.NOT_FOUND, CONSTANTS.ERROR_MESSAGES.NOT_FOUND);
+    }
 
     const contentItems: ContentItem[] = [];
     const skippedFilesList: SkippedFile[] = [];
@@ -160,7 +174,7 @@ export const githubService = {
     let response: Response;
     try {
       response = await fetch(
-          `${githubConfig.apiBaseUrl}/repos/${githubConfig.owner}/${repo.name}/contents/doc`,
+          `${githubConfig.apiBaseUrl}/repos/${githubConfig.owner}/${repo.name}/contents/${CONSTANTS.DOC_FOLDER_NAME}`,
           {
             headers: {
               'Authorization': `token ${githubConfig.token}`,
@@ -169,17 +183,17 @@ export const githubService = {
           }
       );
     } catch (error) {
-      // Network or fetch error, skip this repo
-      console.error(`Error fetching /doc folder for repo ${repo.name}:`, error);
-      return { content: [], skippedFiles: [] };
+      // Network or fetch error
+      console.error(`Error fetching /${CONSTANTS.DOC_FOLDER_NAME} folder for repo ${repo.name}:`, error);
+      throw new NetworkError();
     }
 
     if (!response.ok) {
-      // If the /doc folder is missing (404), skip this repo
-      if (response.status === 404) {
+      // If the /doc folder is missing (404), return empty (this is expected for some repos)
+      if (response.status === CONSTANTS.HTTP_STATUS.NOT_FOUND) {
         return { content: [], skippedFiles: [] };
       }
-      throw new Error(`Failed to fetch docs: ${response.status}`);
+      throw await APIError.fromResponse(response);
     }
 
     const files = await response.json();
@@ -315,21 +329,28 @@ export const githubService = {
 };
 
 const fetchFileContent = async (repoName: string, path: string): Promise<string> => {
-  const response = await fetch(
-      `${githubConfig.apiBaseUrl}/repos/${githubConfig.owner}/${repoName}/contents/${path}`,
-      {
-        headers: {
-          'Authorization': `token ${githubConfig.token}`,
-          'Accept': 'application/vnd.github.v3+json'
+  try {
+    const response = await fetch(
+        `${githubConfig.apiBaseUrl}/repos/${githubConfig.owner}/${repoName}/contents/${path}`,
+        {
+          headers: {
+            'Authorization': `token ${githubConfig.token}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
         }
-      }
-  );
+    );
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch file: ${response.status}`);
+    if (!response.ok) {
+      throw await APIError.fromResponse(response);
+    }
+
+    const data = await response.json();
+    // GitHub returns content as base64
+    return atob(data.content);
+  } catch (error) {
+    if (error instanceof APIError) {
+      throw error;
+    }
+    throw new NetworkError();
   }
-
-  const data = await response.json();
-  // GitHub returns content as base64
-  return atob(data.content);
 }
