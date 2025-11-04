@@ -11,7 +11,8 @@ export const githubService = {
   getRepositories: async (): Promise<Repository[]> => {
     // Use GitHub Search API to find repos with /doc folder in one query
     // This is much more efficient than checking each repo individually (N+1 problem fix)
-    const searchQuery = `user:${githubConfig.owner} path:doc`;
+    const ownerPrefix = githubConfig.ownerType === 'org' ? 'org' : 'user';
+    const searchQuery = `${ownerPrefix}:${githubConfig.owner} path:doc`;
     const searchEndpoint = `${githubConfig.apiBaseUrl}/search/code?q=${encodeURIComponent(searchQuery)}&per_page=100`;
 
     try {
