@@ -5,6 +5,7 @@ import { RepoCard } from '@/components/RepoCard';
 import { ContentViewer } from '@/components/ContentViewer';
 import { ContentListItem } from '@/components/ContentListItem';
 import { ContentContextHeader } from '@/components/ContentContextHeader';
+import { RepositoryGridSkeleton, ContentListSkeleton } from '@/components/LoadingSkeletons';
 import { useRepos } from '@/hooks/useRepos';
 import { useContent } from '@/hooks/useContent';
 import { skippedFiles } from '@/utils/githubService';
@@ -16,13 +17,12 @@ const Index = () => {
   const [activeContentType, setActiveContentType] = useState<ContentType | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedContentId, setSelectedContentId] = useState<string | null>(null);
-  
+
   const { repositories, refreshing: reposRefreshing, refresh: refreshRepos } = useRepos();
-  const { 
-    content, 
+  const {
+    content,
     loading: contentLoading,
     refreshing: contentRefreshing,
-    updateFilter,
     refresh: refreshContent
   } = useContent({
     repoId: activeRepoId,
@@ -79,29 +79,25 @@ const Index = () => {
   const handleRepoSelect = (repoId: string | null) => {
     setActiveRepoId(repoId);
     setSelectedContentId(null);
-    updateFilter({ repoId });
   };
-  
+
   // Handle content type selection
   const handleContentTypeSelect = (contentType: ContentType | null) => {
     setActiveContentType(contentType);
     setSelectedContentId(null);
-    updateFilter({ contentType });
   };
-  
+
   // Handle search
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    updateFilter({ searchQuery: query });
   };
-  
+
   // Reset all filters
   const handleReset = () => {
     setActiveRepoId(null);
     setActiveContentType(null);
     setSearchQuery('');
     setSelectedContentId(null);
-    updateFilter({ repoId: null, contentType: null, searchQuery: '' });
   };
   
   return (
@@ -134,9 +130,12 @@ const Index = () => {
         <div className="flex-1 overflow-y-auto px-8 py-6">
           <div className="max-w-4xl mx-auto">
             {contentLoading ? (
-              <div className="flex justify-center items-center h-full">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-              </div>
+              // Show appropriate skeleton based on current view
+              (activeRepoId || activeContentType || searchQuery) ? (
+                <ContentListSkeleton />
+              ) : (
+                <RepositoryGridSkeleton />
+              )
             ) : (
               <>
                 {/* Display selected content if any */}

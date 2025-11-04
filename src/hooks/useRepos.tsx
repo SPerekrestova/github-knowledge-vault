@@ -1,54 +1,33 @@
-
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Repository } from '@/types';
 import { githubService } from '@/utils/githubService';
 
+/**
+ * Hook to fetch and cache GitHub repositories with /doc folder
+ * Uses React Query for automatic caching, refetching, and background updates
+ */
 export const useRepos = () => {
-  const [repositories, setRepositories] = useState<Repository[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState<boolean>(false);
-
-  const fetchRepositories = async () => {
-    setLoading(true);
-    try {
-      const repos = await githubService.getRepositories();
-      setRepositories(repos);
-      setError(null);
-    } catch (err) {
-      console.error('Failed to fetch repositories:', err);
-      setError('Failed to fetch repositories. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const refreshRepositories = async () => {
-    setRefreshing(true);
-    try {
-      // TODO: Add actual refresh logic here
-      await githubService.refreshAllData();
-      const repos = await githubService.getRepositories();
-      setRepositories(repos);
-      setError(null);
-    } catch (err) {
-      console.error('Failed to refresh repositories:', err);
-      setError('Failed to refresh repositories. Please try again.');
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchRepositories();
-  }, []);
+  const {
+    data: repositories = [],
+    isLoading: loading,
+    error,
+    isFetching: refreshing,
+    refetch
+  } = useQuery({
+    queryKey: ['repositories'],
+    queryFn: githubService.getRepositories,
+    staleTime: 5 * 60 * 1000, // Data is fresh for 5 minutes
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes (formerly cacheTime)
+    retry: 2, // Retry failed requests twice
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+  });
 
   return {
     repositories,
     loading,
-    error,
+    error: error ? 'Failed to fetch repositories. Please try again.' : null,
     refreshing,
-    refetch: fetchRepositories,
-    refresh: refreshRepositories
+    refetch,
+    refresh: refetch // Alias for backward compatibility
   };
 };

@@ -1,94 +1,99 @@
-import { useState, useEffect } from 'react';
-import { ContentItem, ContentType, FilterOptions } from '@/types';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { ContentItem, ContentType } from '@/types';
 import { githubService } from '@/utils/githubService';
+import { useDebounce } from './useDebounce';
 
-export const useContent = (initialFilter?: Partial<FilterOptions>) => {
-  const [content, setContent] = useState<ContentItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState<boolean>(false);
-  const [filter, setFilter] = useState<FilterOptions>({
-    repoId: initialFilter?.repoId || null,
-    contentType: initialFilter?.contentType || null,
-    searchQuery: initialFilter?.searchQuery || '',
+interface UseContentOptions {
+  repoId?: string | null;
+  contentType?: ContentType | null;
+  searchQuery?: string;
+}
+
+/**
+ * Hook to fetch and filter GitHub repository content
+ * Uses React Query for caching and filters data client-side for performance
+ */
+export const useContent = (options: UseContentOptions = {}) => {
+  const { repoId = null, contentType = null, searchQuery = '' } = options;
+
+  // Debounce search query to avoid excessive filtering
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  // Fetch all content once and cache it
+  const {
+    data: allContent = [],
+    isLoading,
+    error,
+    isFetching: refreshing,
+    refetch
+  } = useQuery({
+    queryKey: ['content', 'all'],
+    queryFn: githubService.getAllContent,
+    staleTime: 5 * 60 * 1000, // Data is fresh for 5 minutes
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
-  const fetchContent = async () => {
-    setLoading(true);
-    try {
-      let fetchedContent: ContentItem[] = [];
+  // Fetch specific repo content if repoId is provided (for performance)
+  const {
+    data: repoContent = [],
+    isLoading: repoLoading,
+    isFetching: repoRefreshing
+  } = useQuery({
+    queryKey: ['content', 'repo', repoId],
+    queryFn: () => githubService.getRepoContent(repoId!),
+    enabled: !!repoId, // Only fetch if repoId is provided
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+  });
 
-      if (filter.repoId && filter.contentType) {
-        const repoContent = await githubService.getRepoContent(filter.repoId);
-        if (filter.contentType === 'postman' || filter.contentType === 'openapi') {
-          fetchedContent = repoContent.filter(item => item.type === 'postman' || item.type === 'openapi');
-        } else {
-          fetchedContent = repoContent.filter(item => item.type === filter.contentType);
-        }
-      } else if (filter.repoId) {
-        fetchedContent = await githubService.getRepoContent(filter.repoId);
-      } else if (filter.contentType) {
-        if (filter.contentType === 'postman' || filter.contentType === 'openapi') {
-          const allContent = await githubService.getAllContent();
-          fetchedContent = allContent.filter(item => item.type === 'postman' || item.type === 'openapi');
-        } else {
-          fetchedContent = await githubService.getContentByType(filter.contentType);
-        }
-      } else {
-        fetchedContent = await githubService.getAllContent();
-      }
+  // Client-side filtering - happens in memory, no API calls
+  const filteredContent = useMemo(() => {
+    // Use repo-specific content if filtering by repo, otherwise use all content
+    let content = repoId ? repoContent : allContent;
 
-      if (filter.searchQuery) {
-        const query = filter.searchQuery.toLowerCase();
-        fetchedContent = fetchedContent.filter(item =>
-          item.name.toLowerCase().includes(query) ||
-          item.content.toLowerCase().includes(query)
+    // Filter by content type
+    if (contentType) {
+      if (contentType === 'postman' || contentType === 'openapi') {
+        // Group postman and openapi as "API Collections"
+        content = content.filter(item =>
+          item.type === 'postman' || item.type === 'openapi'
         );
+      } else {
+        content = content.filter(item => item.type === contentType);
       }
-
-      setContent(fetchedContent);
-      setError(null);
-    } catch (err) {
-      console.error('Failed to fetch content:', err);
-      setError('Failed to fetch content. Please try again.');
-    } finally {
-      setLoading(false);
     }
-  };
 
-  const refreshContent = async () => {
-    setRefreshing(true);
-    try {
-      // TODO: Add actual refresh logic here
-      await githubService.refreshAllData();
-      await fetchContent();
-    } catch (err) {
-      console.error('Failed to refresh content:', err);
-      setError('Failed to refresh content. Please try again.');
-    } finally {
-      setRefreshing(false);
+    // Filter by search query (debounced)
+    if (debouncedSearchQuery) {
+      const query = debouncedSearchQuery.toLowerCase();
+      content = content.filter(item => {
+        // Search in name (always fast)
+        if (item.name.toLowerCase().includes(query)) return true;
+
+        // Search in content, but limit to first 1000 chars for performance
+        const contentPreview = item.content.substring(0, 1000).toLowerCase();
+        return contentPreview.includes(query);
+      });
     }
-  };
 
-  useEffect(() => {
-    fetchContent();
-  }, [filter.repoId, filter.contentType, filter.searchQuery]);
+    return content;
+  }, [allContent, repoContent, repoId, contentType, debouncedSearchQuery]);
 
-  const updateFilter = (newFilter: Partial<FilterOptions>) => {
-    setFilter(prevFilter => ({
-      ...prevFilter,
-      ...newFilter
-    }));
-  };
+  // Determine loading state
+  const loading = repoId ? repoLoading : isLoading;
+  const isRefreshing = repoId ? repoRefreshing : refreshing;
 
   return {
-    content,
+    content: filteredContent,
     loading,
-    error,
-    refreshing,
-    filter,
-    updateFilter,
-    refetch: fetchContent,
-    refresh: refreshContent
+    error: error ? 'Failed to fetch content. Please try again.' : null,
+    refreshing: isRefreshing,
+    refetch,
+    refresh: refetch
   };
 };
