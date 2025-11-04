@@ -2,8 +2,12 @@ import { useSearchParams } from 'react-router-dom';
 import { ContentType } from '@/types';
 
 /**
- * Hook to manage documentation filters using URL query parameters as single source of truth
+ * Hook to manage documentation filters using URL query parameters for shareable state
  * Enables deep linking: /docs?repo=xyz&type=markdown&q=api
+ *
+ * Improvements:
+ * - Uses replace instead of push for filter changes (better back button UX)
+ * - Only content selection uses push (allows back navigation)
  */
 export const useDocumentationFilters = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -14,7 +18,7 @@ export const useDocumentationFilters = () => {
   const searchQuery = searchParams.get('q') || '';
   const selectedContentId = searchParams.get('content');
 
-  // Setters that update URL params
+  // Setters that update URL params with replace (better back button behavior)
   const setActiveRepoId = (repoId: string | null) => {
     const newParams = new URLSearchParams(searchParams);
     if (repoId) {
@@ -24,7 +28,8 @@ export const useDocumentationFilters = () => {
     }
     // Clear content selection when changing repo
     newParams.delete('content');
-    setSearchParams(newParams);
+    // Use replace for filter changes (don't pollute history)
+    setSearchParams(newParams, { replace: true });
   };
 
   const setActiveContentType = (contentType: ContentType | null) => {
@@ -36,7 +41,8 @@ export const useDocumentationFilters = () => {
     }
     // Clear content selection when changing type
     newParams.delete('content');
-    setSearchParams(newParams);
+    // Use replace for filter changes
+    setSearchParams(newParams, { replace: true });
   };
 
   const setSearchQuery = (query: string) => {
@@ -48,7 +54,8 @@ export const useDocumentationFilters = () => {
     }
     // Clear content selection when searching
     newParams.delete('content');
-    setSearchParams(newParams);
+    // Use replace for search (avoid history pollution from typing)
+    setSearchParams(newParams, { replace: true });
   };
 
   const setSelectedContentId = (contentId: string | null) => {
@@ -58,11 +65,13 @@ export const useDocumentationFilters = () => {
     } else {
       newParams.delete('content');
     }
-    setSearchParams(newParams);
+    // Use push for content selection (allows back navigation from content view)
+    setSearchParams(newParams, { replace: false });
   };
 
   const resetFilters = () => {
-    setSearchParams(new URLSearchParams());
+    // Use replace when clearing all filters
+    setSearchParams(new URLSearchParams(), { replace: true });
   };
 
   // Check if any filters are active

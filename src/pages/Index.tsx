@@ -129,9 +129,9 @@ const Index = () => {
                 />
               ) : (
                 // Show repository grid (default view)
+                // Note: content not passed to avoid N+1 API calls on initial load
                 <RepositoryGrid
                   repositories={repositories}
-                  content={content}
                   onRepoSelect={setActiveRepoId}
                 />
               )}
