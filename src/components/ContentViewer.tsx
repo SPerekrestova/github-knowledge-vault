@@ -441,7 +441,7 @@ export const ContentViewer = ({ contentItem }: ContentViewerProps) => {
                 <img
                     src={`data:image/svg+xml;base64,${btoa(contentItem.content)}`}
                     alt={contentItem.name}
-                    style={{ maxWidth: '100%', maxHeight: CONSTANTS.MAX_DIAGRAM_HEIGHT, display: 'block' }}
+                    style={{ maxWidth: '100%', maxHeight: CONSTANTS.STYLES.MAX_DIAGRAM_HEIGHT, display: 'block' }}
                 />
               </div>
             </div>
