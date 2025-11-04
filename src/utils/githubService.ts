@@ -325,6 +325,59 @@ export const githubService = {
   getContentById: async (contentId: string): Promise<ContentItem | null> => {
     const allContent = await githubService.getAllContent();
     return allContent.find(item => item.id === contentId) || null;
+  },
+
+  // Get content metadata (counts only, no content) for performance
+  // This is lightweight - only fetches file lists, not file contents
+  getContentMetadata: async (): Promise<Record<string, { markdown: number; mermaid: number; postman: number; total: number }>> => {
+    const repos = await githubService.getRepositories();
+    const metadata: Record<string, { markdown: number; mermaid: number; postman: number; total: number }> = {};
+
+    await Promise.all(
+      repos.map(async (repo) => {
+        try {
+          const response = await fetch(
+            `${githubConfig.apiBaseUrl}/repos/${githubConfig.owner}/${repo.name}/contents/${CONSTANTS.DOC_FOLDER_NAME}`,
+            {
+              headers: {
+                'Authorization': `token ${githubConfig.token}`,
+                'Accept': 'application/vnd.github.v3+json'
+              }
+            }
+          );
+
+          if (!response.ok) {
+            metadata[repo.id] = { markdown: 0, mermaid: 0, postman: 0, total: 0 };
+            return;
+          }
+
+          const files = await response.json();
+          const counts = { markdown: 0, mermaid: 0, postman: 0, total: 0 };
+
+          files.forEach((file: any) => {
+            if (file.type === 'file') {
+              const extension = file.name.split('.').pop()?.toLowerCase();
+              counts.total += 1;
+
+              if (extension === 'md') {
+                counts.markdown += 1;
+              } else if (extension === 'mmd' || extension === 'mermaid') {
+                counts.mermaid += 1;
+              } else if (extension === 'json' || extension === 'yml' || extension === 'yaml') {
+                counts.postman += 1; // Count potential API collections
+              }
+            }
+          });
+
+          metadata[repo.id] = counts;
+        } catch (error) {
+          console.warn(`Failed to fetch metadata for ${repo.name}:`, error);
+          metadata[repo.id] = { markdown: 0, mermaid: 0, postman: 0, total: 0 };
+        }
+      })
+    );
+
+    return metadata;
   }
 };
 

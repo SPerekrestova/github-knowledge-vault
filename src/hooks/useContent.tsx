@@ -14,7 +14,11 @@ interface UseContentOptions {
 
 /**
  * Hook to fetch and filter GitHub repository content
- * Uses React Query for caching and filters data client-side for performance
+ *
+ * OPTIMIZATION: Lazy loading strategy to fix N+1 problem
+ * - Only fetches content when filters are applied or explicitly requested
+ * - Uses repo-specific query when repoId is provided (1 API call instead of N)
+ * - Avoids fetching all content upfront (previously N+1 API calls on page load)
  */
 export const useContent = (options: UseContentOptions = {}) => {
   const { repoId = null, contentType = null, searchQuery = '' } = options;
@@ -22,18 +26,23 @@ export const useContent = (options: UseContentOptions = {}) => {
   // Debounce search query to avoid excessive filtering
   const debouncedSearchQuery = useDebounce(searchQuery, CONSTANTS.SEARCH_DEBOUNCE_MS);
 
-  // Fetch all content once and cache it
+  // Determine if we should fetch all content or just specific repo
+  // Only fetch all content when filters are applied without specific repo
+  const shouldFetchAll = !repoId && (contentType || debouncedSearchQuery);
+
+  // Fetch all content only when needed (lazy loading)
   const {
     data: allContentData,
-    isLoading,
-    error,
-    isFetching: refreshing,
-    refetch
+    isLoading: allLoading,
+    error: allError,
+    isFetching: allRefreshing,
+    refetch: refetchAll
   } = useQuery({
     queryKey: ['content', 'all'],
     queryFn: githubService.getAllContentWithSkipped,
-    staleTime: CONSTANTS.CACHE_TIME_MS, // Data is fresh for 5 minutes
-    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+    enabled: shouldFetchAll, // Only fetch when filters require it
+    staleTime: CONSTANTS.CACHE_TIME_MS,
+    gcTime: 30 * 60 * 1000,
     retry: 2,
     retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
@@ -41,11 +50,13 @@ export const useContent = (options: UseContentOptions = {}) => {
   const allContent = allContentData?.content || [];
   const allSkippedFiles = allContentData?.skippedFilesByRepo || {};
 
-  // Fetch specific repo content if repoId is provided (for performance)
+  // Fetch specific repo content if repoId is provided (MUCH faster - 1 API call)
   const {
     data: repoContentData,
     isLoading: repoLoading,
-    isFetching: repoRefreshing
+    error: repoError,
+    isFetching: repoRefreshing,
+    refetch: refetchRepo
   } = useQuery({
     queryKey: ['content', 'repo', repoId],
     queryFn: () => githubService.getRepoContent(repoId!),
@@ -93,8 +104,14 @@ export const useContent = (options: UseContentOptions = {}) => {
   }, [allContent, repoContent, repoId, contentType, debouncedSearchQuery]);
 
   // Determine loading state
-  const loading = repoId ? repoLoading : isLoading;
-  const isRefreshing = repoId ? repoRefreshing : refreshing;
+  const loading = repoId ? repoLoading : allLoading;
+  const isRefreshing = repoId ? repoRefreshing : allRefreshing;
+
+  // Determine error state
+  const error = repoId ? repoError : allError;
+
+  // Determine refetch function
+  const refetch = repoId ? refetchRepo : refetchAll;
 
   // Get skipped files for current repo
   const currentSkippedFiles: SkippedFile[] = repoId
