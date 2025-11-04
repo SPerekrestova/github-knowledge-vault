@@ -3,6 +3,7 @@ import { useRepos } from '@/hooks/useRepos';
 import { ContentType } from '@/types';
 import { cn } from '@/lib/utils';
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+import { SidebarSkeleton } from './LoadingSkeletons';
 
 interface SidebarProps {
   activeRepoId: string | null;
@@ -94,10 +95,10 @@ export const Sidebar = ({
           <h3 className={cn("text-xs uppercase font-bold text-gray-500 mb-4", isCollapsed ? "hidden" : "block")}>
             Repositories
           </h3>
-          
+
           {loading ? (
-            <div className="flex justify-center p-4">
-              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-600"></div>
+            <div className={cn(isCollapsed ? "hidden" : "block")}>
+              <SidebarSkeleton />
             </div>
           ) : (
             <div>
