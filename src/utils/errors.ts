@@ -25,7 +25,7 @@ export class APIError extends Error {
       details = await response.text();
     }
 
-    let message = CONSTANTS.ERROR_MESSAGES.UNKNOWN_ERROR;
+    let message;
 
     switch (response.status) {
       case CONSTANTS.HTTP_STATUS.UNAUTHORIZED:
