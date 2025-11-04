@@ -74,7 +74,6 @@ export const ContentList = ({
             <div
               key={item.id}
               className="cursor-pointer"
-              onClick={() => onContentSelect(item.id)}
             >
               <ContentListItem contentItem={item} onClick={() => onContentSelect(item.id)} />
             </div>
