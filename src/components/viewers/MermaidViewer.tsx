@@ -39,7 +39,7 @@ export const MermaidViewer = ({ content, onExpand }: MermaidViewerProps) => {
           style={{
             minHeight: loading ? '0' : 'auto',
             maxWidth: '100%',
-            maxHeight: CONSTANTS.MAX_DIAGRAM_HEIGHT,
+            maxHeight: CONSTANTS.STYLES.MAX_DIAGRAM_HEIGHT,
             overflowX: 'auto',
             overflowY: 'auto'
           }}

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Badge } from '@/components/ui/badge';
@@ -12,9 +13,27 @@ interface PostmanCollectionViewerProps {
  * Displays collection info, variables, and requests with responses
  */
 export const PostmanCollectionViewer = ({ content }: PostmanCollectionViewerProps) => {
-  const renderPostmanCollection = (jsonString: string) => {
+  // Parse collection once and memoize (avoids double parsing in tabs)
+  const parsedCollection = useMemo(() => {
     try {
-      const collection = JSON.parse(jsonString);
+      return JSON.parse(content);
+    } catch (error) {
+      console.error('Failed to parse Postman collection:', error);
+      return null;
+    }
+  }, [content]);
+
+  const renderPostmanCollection = (collection: any) => {
+    if (!collection) {
+      return (
+        <div className="text-red-500 p-4 border border-red-200 rounded bg-red-50">
+          <p className="font-medium">Invalid Postman Collection</p>
+          <p className="text-sm mt-1">The JSON format is invalid or corrupted.</p>
+        </div>
+      );
+    }
+
+    try {
 
       return (
         <div className="space-y-6 text-gray-700">
@@ -137,11 +156,11 @@ export const PostmanCollectionViewer = ({ content }: PostmanCollectionViewerProp
         </div>
       );
     } catch (error) {
-      console.error('Failed to parse Postman collection:', error);
+      console.error('Failed to render Postman collection:', error);
       return (
         <div className="text-red-500 p-4 border border-red-200 rounded bg-red-50">
-          <p className="font-medium">Invalid Postman Collection</p>
-          <p className="text-sm mt-1">The JSON format is invalid or corrupted.</p>
+          <p className="font-medium">Error Rendering Collection</p>
+          <p className="text-sm mt-1">An error occurred while rendering the collection.</p>
         </div>
       );
     }
@@ -169,12 +188,12 @@ export const PostmanCollectionViewer = ({ content }: PostmanCollectionViewerProp
         <TabsTrigger value="json">Raw JSON</TabsTrigger>
       </TabsList>
       <TabsContent value="preview">
-        {renderPostmanCollection(content)}
+        {renderPostmanCollection(parsedCollection)}
       </TabsContent>
       <TabsContent value="json">
         <pre className="border p-4 rounded bg-gray-50 overflow-auto max-h-96 text-sm">
           <code className="language-json">
-            {JSON.stringify(JSON.parse(content), null, 2)}
+            {parsedCollection ? JSON.stringify(parsedCollection, null, 2) : 'Invalid JSON'}
           </code>
         </pre>
       </TabsContent>

@@ -27,7 +27,7 @@ export const useContent = (options: UseContentOptions = {}) => {
   const debouncedSearchQuery = useDebounce(searchQuery, CONSTANTS.SEARCH_DEBOUNCE_MS);
 
   // Determine if we should fetch all content or just specific repo
-  // Only fetch all content when filters are applied without specific repo
+  // Fetch all content only when filters are applied without a specific repo (avoids N+1 on initial load)
   const shouldFetchAll = !repoId && (contentType || debouncedSearchQuery);
 
   // Fetch all content only when needed (lazy loading)
