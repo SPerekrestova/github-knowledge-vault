@@ -39,3 +39,13 @@ export const ContentListSkeleton = () => (
     ))}
   </div>
 );
+
+export const SidebarSkeleton = () => (
+  <div className="space-y-2">
+    {Array.from({ length: 5 }).map((_, i) => (
+      <div key={i} className="flex items-center w-full px-3 py-2">
+        <Skeleton className="h-4 w-full" />
+      </div>
+    ))}
+  </div>
+);
