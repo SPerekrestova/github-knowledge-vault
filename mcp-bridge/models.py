@@ -4,23 +4,24 @@ Pydantic models for request/response validation and serialization
 """
 
 from typing import List, Optional, Dict, Any, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class Repository(BaseModel):
     """Repository model matching frontend expectations"""
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     name: str
     description: str
     url: str
     hasDocFolder: bool = Field(alias="hasDocFolder")
 
-    class Config:
-        populate_by_name = True
-
 
 class DocumentFile(BaseModel):
     """Documentation file metadata"""
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     name: str
     path: str
@@ -30,12 +31,11 @@ class DocumentFile(BaseModel):
     download_url: str = Field(alias="download_url")
     sha: str
 
-    class Config:
-        populate_by_name = True
-
 
 class ContentItem(BaseModel):
     """Content item with file data"""
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     repoId: str = Field(alias="repoId")
     name: str
@@ -43,9 +43,6 @@ class ContentItem(BaseModel):
     type: str
     content: str
     lastUpdated: str = Field(alias="lastUpdated")
-
-    class Config:
-        populate_by_name = True
 
 
 class SearchQuery(BaseModel):
