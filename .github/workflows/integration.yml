@@ -1,0 +1,112 @@
+name: Integration Tests
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+jobs:
+  integration:
+    name: Full Stack Integration Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: mcp-bridge/requirements.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Python dependencies
+        working-directory: mcp-bridge
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Create mock MCP Server
+        run: |
+          mkdir -p /tmp/mock_mcp_server
+          cat > /tmp/mock_mcp_server/main.py << 'EOF'
+          #!/usr/bin/env python3
+          """Mock MCP Server for integration testing"""
+          import asyncio
+          import json
+          from typing import Any, Dict, List
+          from mcp.server import Server
+          from mcp.server.stdio import stdio_server
+          from mcp.types import Tool, TextContent
+
+          app = Server("mock-github-server")
+
+          @app.list_tools()
+          async def list_tools() -> List[Tool]:
+              return [
+                  Tool(name="get_org_repos", description="Get repos", inputSchema={"type": "object", "properties": {"org": {"type": "string"}}, "required": ["org"]}),
+                  Tool(name="get_repo_docs", description="Get docs", inputSchema={"type": "object", "properties": {"org": {"type": "string"}, "repo": {"type": "string"}}, "required": ["org", "repo"]}),
+                  Tool(name="get_file_content", description="Get content", inputSchema={"type": "object", "properties": {"org": {"type": "string"}, "repo": {"type": "string"}, "path": {"type": "string"}}, "required": ["org", "repo", "path"]}),
+                  Tool(name="search_documentation", description="Search", inputSchema={"type": "object", "properties": {"org": {"type": "string"}, "query": {"type": "string"}}, "required": ["org", "query"]})
+              ]
+
+          @app.call_tool()
+          async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
+              if name == "get_org_repos":
+                  return [TextContent(type="text", text=json.dumps([{"id": "1", "name": "test-repo", "description": "Test", "url": "https://github.com/test/test-repo", "hasDocFolder": True}]))]
+              elif name == "get_repo_docs":
+                  return [TextContent(type="text", text=json.dumps([{"id": "1", "name": "README.md", "path": "doc/README.md", "type": "markdown", "size": 100, "url": "https://github.com/test/test-repo", "download_url": "https://raw.githubusercontent.com/test/test-repo/main/doc/README.md", "sha": "abc"}]))]
+              elif name == "get_file_content":
+                  return [TextContent(type="text", text=json.dumps({"name": "README.md", "path": "doc/README.md", "content": "# Test", "sha": "abc"}))]
+              elif name == "search_documentation":
+                  return [TextContent(type="text", text=json.dumps([{"name": "README.md", "path": "doc/README.md", "repository": "test-repo", "url": "https://github.com/test/test-repo", "sha": "abc"}]))]
+              raise ValueError(f"Unknown tool: {name}")
+
+          async def main():
+              async with stdio_server() as (read_stream, write_stream):
+                  await app.run(read_stream, write_stream, app.create_initialization_options())
+
+          if __name__ == "__main__":
+              asyncio.run(main())
+          EOF
+          chmod +x /tmp/mock_mcp_server/main.py
+
+      - name: Run MCP Bridge tests
+        working-directory: mcp-bridge
+        run: |
+          pytest tests/ -v
+        env:
+          GITHUB_ORGANIZATION: test-org
+          MCP_SERVER_PATH: /tmp/mock_mcp_server/main.py
+          CACHE_ENABLED: true
+
+      - name: Run Frontend tests
+        run: |
+          npm test -- --run
+        env:
+          VITE_GITHUB_OWNER: test-org
+          VITE_GITHUB_OWNER_TYPE: org
+          VITE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Test Frontend build
+        run: |
+          npm run build
+        env:
+          VITE_GITHUB_OWNER: test-org
+          VITE_GITHUB_OWNER_TYPE: org
