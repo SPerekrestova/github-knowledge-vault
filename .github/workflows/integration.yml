@@ -87,116 +87,26 @@ jobs:
           EOF
           chmod +x /tmp/mock_mcp_server/main.py
 
-      - name: Start MCP Bridge
+      - name: Run MCP Bridge tests
         working-directory: mcp-bridge
         run: |
-          export GITHUB_ORGANIZATION=test-org
-          export MCP_SERVER_PATH=/tmp/mock_mcp_server/main.py
-          export CACHE_ENABLED=true
-          export PORT=3001
-          python main.py &
-          BRIDGE_PID=$!
-          echo "BRIDGE_PID=$BRIDGE_PID" >> $GITHUB_ENV
+          pytest tests/ -v
+        env:
+          GITHUB_ORGANIZATION: test-org
+          MCP_SERVER_PATH: /tmp/mock_mcp_server/main.py
+          CACHE_ENABLED: true
 
-          # Wait for bridge to start
-          for i in {1..30}; do
-            if curl -s http://localhost:3001/health > /dev/null; then
-              echo "✓ MCP Bridge started successfully"
-              break
-            fi
-            if [ $i -eq 30 ]; then
-              echo "✗ MCP Bridge failed to start"
-              exit 1
-            fi
-            sleep 1
-          done
-
-      - name: Test Bridge Health Endpoint
+      - name: Run Frontend tests
         run: |
-          response=$(curl -s http://localhost:3001/health)
-          echo "Health response: $response"
+          npm test -- --run
+        env:
+          VITE_GITHUB_OWNER: test-org
+          VITE_GITHUB_OWNER_TYPE: org
+          VITE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-          status=$(echo $response | jq -r '.status')
-          if [ "$status" != "ok" ]; then
-            echo "✗ Health check failed"
-            exit 1
-          fi
-          echo "✓ Health check passed"
-
-      - name: Test Bridge API Endpoints
-        run: |
-          # Test get repos
-          echo "Testing GET /api/repos..."
-          repos=$(curl -s http://localhost:3001/api/repos)
-          echo "Repos: $repos"
-
-          repo_count=$(echo $repos | jq 'length')
-          if [ "$repo_count" -eq 0 ]; then
-            echo "✗ No repositories returned"
-            exit 1
-          fi
-          echo "✓ GET /api/repos works ($repo_count repos)"
-
-          # Test get docs
-          echo "Testing GET /api/repos/test-repo/docs..."
-          docs=$(curl -s http://localhost:3001/api/repos/test-repo/docs)
-          echo "Docs: $docs"
-          echo "✓ GET /api/repos/{repo}/docs works"
-
-          # Test search
-          echo "Testing POST /api/search..."
-          search=$(curl -s -X POST http://localhost:3001/api/search \
-            -H "Content-Type: application/json" \
-            -d '{"query": "test"}')
-          echo "Search results: $search"
-          echo "✓ POST /api/search works"
-
-      - name: Test Cache Functionality
-        run: |
-          # First request (cache miss)
-          echo "Testing cache miss..."
-          time1_start=$(date +%s%N)
-          curl -s http://localhost:3001/api/repos > /dev/null
-          time1_end=$(date +%s%N)
-          time1=$((($time1_end - $time1_start) / 1000000))
-
-          # Second request (cache hit)
-          echo "Testing cache hit..."
-          time2_start=$(date +%s%N)
-          curl -s http://localhost:3001/api/repos > /dev/null
-          time2_end=$(date +%s%N)
-          time2=$((($time2_end - $time2_start) / 1000000))
-
-          echo "First request: ${time1}ms"
-          echo "Second request: ${time2}ms (should be faster)"
-          echo "✓ Cache tested"
-
-          # Clear cache
-          echo "Testing cache clear..."
-          curl -s -X POST http://localhost:3001/api/cache/clear
-          echo "✓ Cache cleared"
-
-      - name: Build Frontend
+      - name: Test Frontend build
         run: |
           npm run build
         env:
           VITE_GITHUB_OWNER: test-org
           VITE_GITHUB_OWNER_TYPE: org
-
-      - name: Stop MCP Bridge
-        if: always()
-        run: |
-          if [ ! -z "$BRIDGE_PID" ]; then
-            kill $BRIDGE_PID || true
-          fi
-
-      - name: Integration Test Summary
-        if: always()
-        run: |
-          echo "## Integration Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✓ MCP Bridge started successfully" >> $GITHUB_STEP_SUMMARY
-          echo "✓ Health check passed" >> $GITHUB_STEP_SUMMARY
-          echo "✓ API endpoints working" >> $GITHUB_STEP_SUMMARY
-          echo "✓ Cache functionality tested" >> $GITHUB_STEP_SUMMARY
-          echo "✓ Frontend build successful" >> $GITHUB_STEP_SUMMARY
