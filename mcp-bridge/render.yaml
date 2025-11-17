@@ -1,0 +1,28 @@
+# Render Blueprint for MCP Bridge
+services:
+  # MCP Bridge Web Service
+  - type: web
+    name: github-knowledge-vault-bridge
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: GITHUB_ORGANIZATION
+        sync: false  # Set in Render dashboard
+      - key: GITHUB_TOKEN
+        sync: false  # Set in Render dashboard (secret)
+      - key: MCP_SERVER_PATH
+        value: /opt/render/project/src/GitHub_MCP_Server/main.py
+      - key: CACHE_TTL_SECONDS
+        value: 300
+      - key: CACHE_ENABLED
+        value: true
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: LOG_LEVEL
+        value: INFO

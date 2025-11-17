@@ -4,6 +4,11 @@ A React + TypeScript knowledge base app that aggregates and displays documentati
 
 **Now with MCP Bridge Architecture for Enhanced Security!**
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/SPerekrestova/github-knowledge-vault)
+
+**🚀 [Quick Deploy Guide](./DEPLOYMENT.md)** | **💻 [Local Development](#setup--local-development)**
+
 ![Demo of the app](./assets/demo.gif)
 
 ## Architecture
