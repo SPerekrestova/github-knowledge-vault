@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Repository } from '@/types';
-import { githubService } from '@/utils/githubService';
+import { mcpService } from '@/utils/mcpService';
 import { APIError, NetworkError } from '@/utils/errors';
 import { CONSTANTS } from '@/constants';
 
 /**
- * Hook to fetch and cache GitHub repositories with /doc folder
+ * Hook to fetch repositories via MCP Bridge
  * Uses React Query for automatic caching, refetching, and background updates
  */
 export const useRepos = () => {
@@ -17,7 +17,7 @@ export const useRepos = () => {
     refetch
   } = useQuery({
     queryKey: ['repositories'],
-    queryFn: githubService.getRepositories,
+    queryFn: () => mcpService.getRepositories(),
     staleTime: CONSTANTS.CACHE_TIME_MS, // Data is fresh for 5 minutes
     gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes (formerly cacheTime)
     retry: 2, // Retry failed requests twice
