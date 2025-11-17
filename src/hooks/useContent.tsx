@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ContentType } from '@/types';
-import { githubService, SkippedFile } from '@/utils/githubService';
+import { mcpService, SkippedFile } from '@/utils/mcpService';
 import { useDebounce } from './useDebounce';
 import { APIError, NetworkError } from '@/utils/errors';
 import { CONSTANTS } from '@/constants';
@@ -13,7 +13,7 @@ interface UseContentOptions {
 }
 
 /**
- * Hook to fetch and filter GitHub repository content
+ * Hook to fetch and filter content via MCP Bridge
  *
  * OPTIMIZATION: Lazy loading strategy to fix N+1 problem
  * - Only fetches content when filters are applied or explicitly requested
@@ -39,7 +39,7 @@ export const useContent = (options: UseContentOptions = {}) => {
     refetch: refetchAll
   } = useQuery({
     queryKey: ['content', 'all'],
-    queryFn: githubService.getAllContentWithSkipped,
+    queryFn: () => mcpService.getAllContentWithSkipped(),
     enabled: shouldFetchAll, // Only fetch when filters require it
     staleTime: CONSTANTS.CACHE_TIME_MS,
     gcTime: 30 * 60 * 1000,
@@ -59,7 +59,7 @@ export const useContent = (options: UseContentOptions = {}) => {
     refetch: refetchRepo
   } = useQuery({
     queryKey: ['content', 'repo', repoId],
-    queryFn: () => githubService.getRepoContent(repoId!),
+    queryFn: () => mcpService.getRepoContent(repoId!),
     enabled: !!repoId, // Only fetch if repoId is provided
     staleTime: CONSTANTS.CACHE_TIME_MS,
     gcTime: 30 * 60 * 1000,

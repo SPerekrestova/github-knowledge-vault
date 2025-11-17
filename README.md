@@ -2,8 +2,28 @@
 
 A React + TypeScript knowledge base app that aggregates and displays documentation, diagrams, and API collections from GitHub repositories (organization or user).
 
+**Now with MCP Bridge Architecture for Enhanced Security!**
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/SPerekrestova/github-knowledge-vault)
+
+**🚀 [Quick Deploy Guide](./DEPLOYMENT.md)** | **💻 [Local Development](#setup--local-development)**
 
 ![Demo of the app](./assets/demo.gif)
+
+## Architecture
+
+This application uses a 3-tier MCP (Model Context Protocol) architecture:
+
+```
+React Frontend → MCP Bridge (FastAPI) → MCP Server (FastMCP) → GitHub API
+```
+
+### Security
+
+✅ **GitHub token is now secure** - stored only on backend, never exposed in browser
+✅ **Server-side caching** - 5-minute cache reduces GitHub API calls
+✅ **Clean separation** - Frontend only communicates with MCP Bridge
 
 ## Features
 
@@ -37,45 +57,133 @@ A React + TypeScript knowledge base app that aggregates and displays documentati
 
 ## Setup & Local Development
 
-1. **Clone the repository**
-2. **Configure environment variables** (see below)
-3. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-4. **Start the development server:**
-   ```bash
-   npm run dev
-   ```
-5. **Build for production:**
-   ```bash
-   npm run build
-   ```
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+- GitHub personal access token
+
+### Quick Start (Docker)
+
+The easiest way to run all services:
+
+```bash
+# Create .env file with your GitHub token
+echo "GITHUB_TOKEN=your_github_token_here" > .env
+echo "GITHUB_ORGANIZATION=your-org-name" >> .env
+
+# Start all services
+docker-compose up
+```
+
+Then open http://localhost in your browser.
+
+### Manual Setup (Development)
+
+**1. Start MCP Server:**
+```bash
+cd ../GitHub_MCP_Server
+source venv/bin/activate
+python main.py
+```
+
+**2. Start MCP Bridge:**
+```bash
+cd mcp-bridge
+source venv/bin/activate
+python main.py
+```
+
+**3. Start Frontend:**
+```bash
+npm install
+npm run dev
+```
+
+**4. Open your browser:**
+Navigate to http://localhost:5173
 
 ## Environment Variables
 
-Create a `.env` file in the project root with the following:
+### Frontend (.env)
+Create a `.env` file in the project root:
 
-```
-VITE_GITHUB_OWNER=your-github-org-or-username
-VITE_GITHUB_OWNER_TYPE=org # or 'user'
-VITE_GITHUB_API_BASE_URL=https://api.github.com
-VITE_GITHUB_TOKEN=your-github-token
+```bash
+# MCP Bridge Configuration
+VITE_MCP_BRIDGE_URL=http://localhost:3001
+VITE_GITHUB_ORGANIZATION=your-org-name
 ```
 
-- `VITE_GITHUB_OWNER`: GitHub organization or username
-- `VITE_GITHUB_OWNER_TYPE`: `org` or `user`
-- `VITE_GITHUB_API_BASE_URL`: GitHub API base URL (default: `https://api.github.com`)
-- `VITE_GITHUB_TOKEN`: GitHub personal access token (required for private repos)
+**No GitHub token needed in frontend!** 🔒
+
+### Backend (Docker Compose .env)
+For Docker deployment, create a separate `.env` file:
+
+```bash
+GITHUB_TOKEN=your_github_token_here
+GITHUB_ORGANIZATION=your-org-name
+```
+
+Variables:
+- `VITE_MCP_BRIDGE_URL`: MCP Bridge endpoint (default: `http://localhost:3001`)
+- `VITE_GITHUB_ORGANIZATION`: GitHub organization or username
+- `GITHUB_TOKEN`: GitHub personal access token (backend only)
 
 ## Technology Stack
 
+### Frontend
 - React 18 + TypeScript
 - Tailwind CSS
 - shadcn/ui
 - React Router
 - Lucide React
 - Vite
+- React Query (TanStack Query)
+
+### Backend
+- **MCP Bridge:** FastAPI (Python)
+- **MCP Server:** FastMCP (Python)
+- Server-side caching (5-minute TTL)
+
+## Troubleshooting
+
+### "Cannot connect to MCP Bridge"
+**Solution:**
+```bash
+# Check MCP Bridge is running
+curl http://localhost:3001/health
+
+# Check .env has correct URL
+cat .env | grep VITE_MCP_BRIDGE_URL
+
+# Restart frontend dev server
+npm run dev
+```
+
+### "No repositories showing"
+**Solution:**
+```bash
+# Test bridge directly
+curl http://localhost:3001/api/repos
+
+# Check bridge logs
+cd mcp-bridge && tail -f logs/bridge.log
+
+# Verify organization name
+cat .env | grep GITHUB_ORGANIZATION
+```
+
+### TypeScript errors
+**Solution:**
+```bash
+# Reinstall dependencies
+npm install
+
+# Check for errors
+npx tsc --noEmit
+
+# Clear build cache
+rm -rf node_modules/.vite && npm run dev
+```
 
 ---
 

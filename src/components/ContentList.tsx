@@ -2,7 +2,7 @@ import { ContentItem, ContentType } from '@/types';
 import { ContentListItem } from './ContentListItem';
 import { Button } from './ui/button';
 import { RefreshCw } from 'lucide-react';
-import { SkippedFile } from '@/utils/githubService';
+import { SkippedFile } from '@/utils/mcpService';
 
 interface ContentListProps {
   content: ContentItem[];

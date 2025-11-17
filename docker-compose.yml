@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # MCP Server (Not in current repo, so commented out)
+  # Uncomment if GitHub_MCP_Server is in a sibling directory
+  # mcp-server:
+  #   build: ../GitHub_MCP_Server
+  #   environment:
+  #     - GITHUB_TOKEN=${GITHUB_TOKEN}
+  #     - GITHUB_API_BASE_URL=https://api.github.com
+  #   networks:
+  #     - mcp-network
+  #   restart: unless-stopped
+
+  # MCP Bridge
+  mcp-bridge:
+    build: ./mcp-bridge
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - GITHUB_ORGANIZATION=${GITHUB_ORGANIZATION}
+      - MCP_SERVER_PATH=../GitHub_MCP_Server/main.py
+      - CACHE_TTL_SECONDS=300
+      - CACHE_ENABLED=true
+      - CORS_ORIGINS=http://localhost,https://yourdomain.com
+      - LOG_LEVEL=INFO
+    # depends_on:
+    #   - mcp-server
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - VITE_MCP_BRIDGE_URL=http://mcp-bridge:3001
+        - VITE_GITHUB_ORGANIZATION=${GITHUB_ORGANIZATION}
+    ports:
+      - "80:80"
+    depends_on:
+      - mcp-bridge
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+networks:
+  mcp-network:
+    driver: bridge
