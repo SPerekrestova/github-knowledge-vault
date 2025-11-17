@@ -13,7 +13,10 @@ pip install -r requirements.txt
 
 # 2. Configure
 cp .env.example .env
-# Edit .env with your GITHUB_ORGANIZATION and MCP_SERVER_PATH
+# Edit .env with your GITHUB_ORGANIZATION and GITHUB_TOKEN
+
+# 2.5. Pull MCP Server Docker image
+docker pull ghcr.io/sperekrestova/github-mcp-server:latest
 
 # 3. Run
 python main.py
@@ -45,7 +48,8 @@ Environment variables in `.env`:
 ```bash
 # Required
 GITHUB_ORGANIZATION=your-org-name
-MCP_SERVER_PATH=/home/user/GitHub_MCP_Server/main.py
+GITHUB_TOKEN=your-token  # For MCP Server
+MCP_SERVER_IMAGE=ghcr.io/sperekrestova/github-mcp-server:latest
 
 # Optional
 PORT=3001
@@ -54,8 +58,13 @@ CACHE_TTL_SECONDS=300
 CACHE_ENABLED=true
 CORS_ORIGINS=http://localhost:5173,http://localhost:8080
 LOG_LEVEL=INFO
-GITHUB_TOKEN=your-token  # For MCP Server
 ```
+
+**Important:**
+- The MCP Server runs as a Docker container spawned by the bridge
+- Make sure Docker is installed and running
+- The bridge needs access to the Docker socket to run MCP Server containers
+- Pull the MCP Server image before starting: `docker pull ghcr.io/sperekrestova/github-mcp-server:latest`
 
 ## Development
 

@@ -60,17 +60,19 @@ Then open http://localhost in your browser.
 
 ### Manual Setup (Development)
 
-**1. Start MCP Server:**
+**1. Pull MCP Server Docker image:**
 ```bash
-cd ../GitHub_MCP_Server
-source venv/bin/activate
-python main.py
+docker pull ghcr.io/sperekrestova/github-mcp-server:latest
 ```
 
 **2. Start MCP Bridge:**
 ```bash
 cd mcp-bridge
+python3 -m venv venv
 source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+# Edit .env with your GITHUB_TOKEN and GITHUB_ORGANIZATION
 python main.py
 ```
 
@@ -82,6 +84,8 @@ npm run dev
 
 **4. Open your browser:**
 Navigate to http://localhost:5173
+
+**Note:** The MCP Server runs automatically as a Docker container spawned by the MCP Bridge. You don't need to start it separately.
 
 ## Environment Variables
 
