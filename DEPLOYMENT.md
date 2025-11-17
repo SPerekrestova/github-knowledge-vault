@@ -1,12 +1,29 @@
 # Deployment Guide - Free Hosting
 
+## ⚠️ Important: MCP Server Required
+
+This application uses a **3-tier MCP architecture** that requires:
+1. **Frontend** (React)
+2. **MCP Bridge** (FastAPI)
+3. **MCP Server** (FastMCP) ← **Must be included!**
+
+📚 **[Read MCP Server Deployment Guide](./MCP_DEPLOYMENT.md)** for detailed instructions on bundling MCP Server with your deployment.
+
+**Quick Summary:** You need to either:
+- Copy MCP Server into `mcp-server/` directory in this repo, OR
+- Add MCP Server as a git submodule, OR
+- Download it during build
+
+---
+
 ## 🎯 Quick Deploy to Render (Free)
 
 ### Prerequisites
 - GitHub account
 - Render account (free): https://render.com
+- **MCP Server in your repository** (see [MCP_DEPLOYMENT.md](./MCP_DEPLOYMENT.md))
 
-### 1. Deploy Backend (MCP Bridge)
+### 1. Deploy Backend (MCP Bridge + MCP Server)
 
 **Via Render Dashboard:**
 

@@ -1,11 +1,23 @@
-# Render Blueprint for MCP Bridge
+# Render Blueprint for MCP Bridge + MCP Server
+#
+# IMPORTANT: Before deploying, ensure MCP Server is in your repository:
+# Option 1: Copy it: cp -r ../GitHub_MCP_Server ./mcp-server
+# Option 2: Submodule: git submodule add <url> mcp-server
+#
+# See MCP_DEPLOYMENT.md for detailed instructions
+
 services:
-  # MCP Bridge Web Service
+  # MCP Bridge Web Service (includes MCP Server)
   - type: web
     name: github-knowledge-vault-bridge
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    # Build command installs both Bridge and Server dependencies
+    buildCommand: |
+      pip install -r requirements.txt
+      if [ -f "../mcp-server/requirements.txt" ]; then
+        pip install -r ../mcp-server/requirements.txt
+      fi
     startCommand: python main.py
     envVars:
       - key: PORT
@@ -17,7 +29,9 @@ services:
       - key: GITHUB_TOKEN
         sync: false  # Set in Render dashboard (secret)
       - key: MCP_SERVER_PATH
-        value: /opt/render/project/src/GitHub_MCP_Server/main.py
+        value: ../mcp-server/main.py  # Path to MCP Server in repo
+      - key: MCP_SERVER_TYPE
+        value: stdio
       - key: CACHE_TTL_SECONDS
         value: 300
       - key: CACHE_ENABLED
