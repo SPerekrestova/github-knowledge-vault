@@ -88,68 +88,6 @@ LOG_LEVEL=INFO
 GITHUB_TOKEN=your-token  # For MCP Server
 ```
 
-## Features
-
-- ✅ **FastAPI** - Modern async Python framework
-- ✅ **Caching** - 5-minute TTL, reduces API calls
-- ✅ **Type Safety** - Pydantic models with validation
-- ✅ **CORS** - Configured for frontend
-- ✅ **Auto Docs** - Swagger UI + ReDoc
-- ✅ **Logging** - Comprehensive debug info
-- ✅ **Tests** - 62 unit tests, 100% passing
-
-## Testing
-
-```bash
-# Run all tests
-pytest tests/ -v
-
-# Run specific test file
-pytest tests/test_api.py -v
-
-# Run with coverage
-pytest tests/ --cov=. --cov-report=term
-
-# Test count: 62 tests
-# - test_models.py: 17 tests (Pydantic validation)
-# - test_cache.py: 16 tests (cache functionality)
-# - test_mcp_client.py: 12 tests (MCP client)
-# - test_api.py: 17 tests (API endpoints)
-```
-
-## MCP Server Setup
-
-The MCP Server must be set up as a **separate repository**.
-
-### Required MCP Server Tools
-
-The bridge expects these MCP tools:
-
-1. `get_org_repos` - Get repositories with /doc folders
-2. `get_repo_docs` - Get documentation files from /doc folder
-3. `get_file_content` - Get file content from GitHub
-4. `search_documentation` - Search across all docs
-
-### Setup Steps
-
-```bash
-# 1. Clone/create MCP Server repository
-cd /home/user
-git clone <MCP_SERVER_REPO> GitHub_MCP_Server
-cd GitHub_MCP_Server
-
-# 2. Install dependencies
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# 3. Configure
-# Set GITHUB_TOKEN and GITHUB_ORG in .env
-
-# 4. Update bridge config
-# Set MCP_SERVER_PATH=/home/user/GitHub_MCP_Server/main.py
-```
-
 ## Development
 
 ### Running in Development
@@ -158,13 +96,6 @@ pip install -r requirements.txt
 # With auto-reload
 uvicorn main:app --reload --port 3001 --log-level debug
 ```
-
-### Code Organization
-
-- **models.py** - Request/response validation (Pydantic V2)
-- **cache.py** - TTL-based cache with pattern invalidation
-- **mcp_client.py** - Async MCP stdio client
-- **main.py** - FastAPI routes with caching + error handling
 
 ### Caching Strategy
 
@@ -176,92 +107,6 @@ uvicorn main:app --reload --port 3001 --log-level debug
 | All content | `content:all` | 5 min |
 
 **Note:** Search results are NOT cached.
-
-## Troubleshooting
-
-### MCP Server Connection Failed
-
-**Problem:** `MCP Server not connected` error
-
-**Solutions:**
-1. Verify `MCP_SERVER_PATH` in `.env` points to correct location
-2. Check MCP Server exists: `ls /home/user/GitHub_MCP_Server/main.py`
-3. Ensure MCP Server is executable: `chmod +x <path>`
-4. Test MCP Server independently
-
-### Port Already in Use
-
-**Problem:** Port 3001 already in use
-
-**Solution:**
-```bash
-# Change PORT in .env
-PORT=3002
-
-# Or kill existing process
-lsof -ti:3001 | xargs kill -9
-```
-
-### Import Errors
-
-**Problem:** `ModuleNotFoundError`
-
-**Solutions:**
-1. Activate venv: `source venv/bin/activate`
-2. Reinstall: `pip install -r requirements.txt`
-3. Check Python version: `python --version` (need 3.10+)
-
-### Tests Failing
-
-**Problem:** Tests fail when running `pytest`
-
-**Solutions:**
-1. Ensure in correct directory: `cd mcp-bridge`
-2. Activate venv: `source venv/bin/activate`
-3. Install test dependencies: `pip install -r requirements.txt`
-4. Check environment variables are not interfering
-
-## Dependencies
-
-```
-fastapi>=0.104.0        # Web framework
-uvicorn[standard]       # ASGI server
-mcp>=0.1.0             # MCP SDK
-pydantic>=2.0.0        # Data validation
-python-dotenv          # Environment variables
-httpx                  # HTTP client
-pytest                 # Testing
-pytest-asyncio         # Async testing
-```
-
-## CI/CD
-
-Tests run automatically via GitHub Actions on:
-- Push to `main`, `develop`, `claude/**` branches
-- Pull requests to `main`, `develop`
-
-Workflow: `.github/workflows/mcp-bridge.yml`
-
-## Production Deployment
-
-**Checklist:**
-- [ ] Set production `GITHUB_ORGANIZATION`
-- [ ] Set secure `GITHUB_TOKEN` in environment
-- [ ] Update `CORS_ORIGINS` for production domain
-- [ ] Set `LOG_LEVEL=INFO` or `WARNING`
-- [ ] Implement full MCP Server (not stub)
-- [ ] Use process manager (systemd, supervisor)
-- [ ] Set up reverse proxy (nginx, Caddy)
-- [ ] Enable HTTPS
-- [ ] Monitor logs and errors
-
-## Contributing
-
-1. Follow PEP 8 style guidelines
-2. Add type hints to all functions
-3. Write tests for new features
-4. Ensure all tests pass: `pytest tests/`
-5. Update this README if adding new features
 
 ## License
 

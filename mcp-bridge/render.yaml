@@ -1,10 +1,4 @@
 # Render Blueprint for MCP Bridge + MCP Server
-#
-# IMPORTANT: Before deploying, ensure MCP Server is in your repository:
-# Option 1: Copy it: cp -r ../GitHub_MCP_Server ./mcp-server
-# Option 2: Submodule: git submodule add <url> mcp-server
-#
-# See MCP_DEPLOYMENT.md for detailed instructions
 
 services:
   # MCP Bridge Web Service (includes MCP Server)
