@@ -2,28 +2,9 @@
 
 A React + TypeScript knowledge base app that aggregates and displays documentation, diagrams, and API collections from GitHub repositories (organization or user).
 
-**Now with MCP Bridge Architecture for Enhanced Security!**
-
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/SPerekrestova/github-knowledge-vault)
-
-**🚀 [Quick Deploy Guide](./DEPLOYMENT.md)** | **💻 [Local Development](#setup--local-development)**
 
 ![Demo of the app](./assets/demo.gif)
 
-## Architecture
-
-This application uses a 3-tier MCP (Model Context Protocol) architecture:
-
-```
-React Frontend → MCP Bridge (FastAPI) → MCP Server (FastMCP) → GitHub API
-```
-
-### Security
-
-✅ **GitHub token is now secure** - stored only on backend, never exposed in browser
-✅ **Server-side caching** - 5-minute cache reduces GitHub API calls
-✅ **Clean separation** - Frontend only communicates with MCP Bridge
 
 ## Features
 
@@ -144,50 +125,8 @@ Variables:
 - **MCP Server:** FastMCP (Python)
 - Server-side caching (5-minute TTL)
 
-## Troubleshooting
-
-### "Cannot connect to MCP Bridge"
-**Solution:**
-```bash
-# Check MCP Bridge is running
-curl http://localhost:3001/health
-
-# Check .env has correct URL
-cat .env | grep VITE_MCP_BRIDGE_URL
-
-# Restart frontend dev server
-npm run dev
-```
-
-### "No repositories showing"
-**Solution:**
-```bash
-# Test bridge directly
-curl http://localhost:3001/api/repos
-
-# Check bridge logs
-cd mcp-bridge && tail -f logs/bridge.log
-
-# Verify organization name
-cat .env | grep GITHUB_ORGANIZATION
-```
-
-### TypeScript errors
-**Solution:**
-```bash
-# Reinstall dependencies
-npm install
-
-# Check for errors
-npx tsc --noEmit
-
-# Clear build cache
-rm -rf node_modules/.vite && npm run dev
-```
-
 ---
 
 **This project is designed to work with any GitHub repository structure as long as documentation assets are placed in a `/doc` folder.**
 
-For questions or issues, please open an issue or pull request.
 
