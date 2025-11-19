@@ -1,18 +1,8 @@
 version: '3.8'
 
 services:
-  # MCP Server (Not in current repo, so commented out)
-  # Uncomment if GitHub_MCP_Server is in a sibling directory
-  # mcp-server:
-  #   build: ../GitHub_MCP_Server
-  #   environment:
-  #     - GITHUB_TOKEN=${GITHUB_TOKEN}
-  #     - GITHUB_API_BASE_URL=https://api.github.com
-  #   networks:
-  #     - mcp-network
-  #   restart: unless-stopped
-
   # MCP Bridge
+  # The bridge spawns MCP Server containers as needed using Docker
   mcp-bridge:
     build: ./mcp-bridge
     ports:
@@ -20,16 +10,18 @@ services:
     environment:
       - PORT=3001
       - GITHUB_ORGANIZATION=${GITHUB_ORGANIZATION}
-      - MCP_SERVER_PATH=../GitHub_MCP_Server/main.py
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - MCP_SERVER_IMAGE=ghcr.io/sperekrestova/github-mcp-server:latest
       - CACHE_TTL_SECONDS=300
       - CACHE_ENABLED=true
       - CORS_ORIGINS=http://localhost,https://yourdomain.com
       - LOG_LEVEL=INFO
-    # depends_on:
-    #   - mcp-server
     networks:
       - mcp-network
     restart: unless-stopped
+    # Mount Docker socket to allow bridge to run MCP Server containers
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
 
   # Frontend
   frontend:

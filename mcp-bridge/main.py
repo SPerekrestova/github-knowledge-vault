@@ -35,7 +35,7 @@ PORT = int(os.getenv("PORT", "3001"))
 HOST = os.getenv("HOST", "0.0.0.0")
 GITHUB_ORG = os.getenv("GITHUB_ORGANIZATION", "")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
-MCP_SERVER_PATH = os.getenv("MCP_SERVER_PATH", "./mcp_server/main.py")
+MCP_SERVER_IMAGE = os.getenv("MCP_SERVER_IMAGE", "ghcr.io/sperekrestova/github-mcp-server:latest")
 CACHE_TTL = int(os.getenv("CACHE_TTL_SECONDS", "300"))
 CACHE_ENABLED = os.getenv("CACHE_ENABLED", "true").lower() == "true"
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
@@ -73,7 +73,7 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting MCP Bridge...")
     logger.info(f"   Organization: {GITHUB_ORG}")
-    logger.info(f"   MCP Server: {MCP_SERVER_PATH}")
+    logger.info(f"   MCP Server Image: {MCP_SERVER_IMAGE}")
     logger.info(f"   Cache: {'Enabled' if CACHE_ENABLED else 'Disabled'} (TTL: {CACHE_TTL}s)")
 
     # Validate configuration
@@ -88,17 +88,14 @@ async def lifespan(app: FastAPI):
 
     # Initialize and connect MCP client
     try:
-        mcp_client = MCPClient(MCP_SERVER_PATH, GITHUB_ORG, GITHUB_TOKEN)
+        mcp_client = MCPClient(MCP_SERVER_IMAGE, GITHUB_ORG, GITHUB_TOKEN)
         await mcp_client.connect()
         logger.info("MCP Client connected")
-    except FileNotFoundError as e:
-        logger.error(f"MCP Server not found: {e}")
-        logger.warning("Bridge will start but MCP calls will fail")
-        logger.warning("Please implement the MCP Server or update MCP_SERVER_PATH")
-        # Don't raise, allow server to start for testing
     except Exception as e:
         logger.error(f"Failed to connect to MCP Server: {e}")
         logger.warning("Bridge will start but MCP calls will fail")
+        logger.warning(f"Make sure Docker is installed and image is available: {MCP_SERVER_IMAGE}")
+        # Don't raise, allow server to start for testing
 
     logger.info("MCP Bridge ready")
 

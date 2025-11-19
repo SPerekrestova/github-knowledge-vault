@@ -1,6 +1,6 @@
 """
 MCP Client for communicating with the MCP Server
-Handles stdio-based MCP protocol communication
+Handles stdio-based MCP protocol communication via Docker
 """
 
 import asyncio
@@ -16,54 +16,62 @@ logger = logging.getLogger(__name__)
 
 class MCPClient:
     """
-    Client for communicating with GitHub MCP Server
+    Client for communicating with GitHub MCP Server via Docker
 
     Manages connection lifecycle and provides high-level methods
     for calling MCP tools.
     """
 
-    def __init__(self, mcp_server_path: str, organization: str, github_token: Optional[str] = None):
+    def __init__(self, mcp_server_image: str, organization: str, github_token: Optional[str] = None):
         """
         Initialize MCP Client
 
         Args:
-            mcp_server_path: Path to MCP Server main.py
+            mcp_server_image: Docker image name for MCP Server (e.g., ghcr.io/sperekrestova/github-mcp-server:latest)
             organization: GitHub organization name
             github_token: GitHub API token for the MCP Server
         """
-        self.mcp_server_path = mcp_server_path
+        self.mcp_server_image = mcp_server_image
         self.organization = organization
         self.github_token = github_token
         self.session: Optional[ClientSession] = None
         self._read = None
         self._write = None
         logger.info(f"MCP Client initialized for org: {organization}")
+        logger.info(f"Using Docker image: {mcp_server_image}")
 
     async def connect(self):
         """
-        Establish connection to MCP Server via stdio
+        Establish connection to MCP Server via stdio using Docker
 
         Raises:
             Exception: If connection fails
         """
         try:
-            logger.info(f"Connecting to MCP Server: {self.mcp_server_path}")
+            logger.info(f"Connecting to MCP Server Docker image: {self.mcp_server_image}")
 
-            # Check if MCP server file exists
-            if not os.path.exists(self.mcp_server_path):
-                raise FileNotFoundError(f"MCP Server not found at: {self.mcp_server_path}")
+            # Build Docker run command arguments
+            docker_args = [
+                "run",
+                "-i",           # Interactive mode for stdio
+                "--rm",         # Remove container after exit
+            ]
 
-            # Create environment for MCP Server with GitHub token
-            env = os.environ.copy()
+            # Add environment variables
             if self.github_token:
-                env["GITHUB_TOKEN"] = self.github_token
-                env["GITHUB_ORG"] = self.organization
+                docker_args.extend(["-e", f"GITHUB_TOKEN={self.github_token}"])
+            docker_args.extend(["-e", f"GITHUB_ORG={self.organization}"])
 
-            # Create server parameters
+            # Add the Docker image
+            docker_args.append(self.mcp_server_image)
+
+            logger.info(f"Docker command: docker {' '.join(docker_args)}")
+
+            # Create server parameters for Docker
             server_params = StdioServerParameters(
-                command="python",
-                args=[self.mcp_server_path],
-                env=env
+                command="docker",
+                args=docker_args,
+                env=None  # Environment passed via -e flags
             )
 
             # Connect via stdio
@@ -74,13 +82,12 @@ class MCPClient:
             self.session = ClientSession(self._read, self._write)
             await self.session.initialize()
 
-            logger.info(" Connected to MCP Server")
+            logger.info("✅ Connected to MCP Server via Docker")
 
-        except FileNotFoundError as e:
-            logger.error(f"MCP Server file not found: {e}")
-            raise
         except Exception as e:
             logger.error(f"Failed to connect to MCP Server: {e}")
+            logger.error("Make sure Docker is installed and the image is available")
+            logger.error(f"Try: docker pull {self.mcp_server_image}")
             raise
 
     async def disconnect(self):
