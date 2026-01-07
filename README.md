@@ -76,8 +76,8 @@ python main.py
 
 **3. Start Frontend:**
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 **4. Open your browser:**
