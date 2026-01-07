@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-RUN npm ci
+RUN bun ci
 
 # Copy source
 COPY . .
@@ -15,7 +15,7 @@ ARG VITE_MCP_BRIDGE_URL
 ARG VITE_GITHUB_ORGANIZATION
 
 # Build
-RUN npm run build
+RUN bun run build
 
 # Production stage
 FROM nginx:alpine
