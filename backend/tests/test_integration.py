@@ -1,4 +1,4 @@
-"""Integration test for complete workflow (Test 21)."""
+"""Integration test for complete workflow"""
 import pytest
 from httpx import AsyncClient
 from fastapi.testclient import TestClient
@@ -55,118 +55,134 @@ class TestCompleteWorkflow:
         assert messages_response.status_code == 200
         assert messages_response.json() == []
     
-    @pytest.mark.skipif(
-        True,  # Skip by default as it requires valid ANTHROPIC_API_KEY
-        reason="Requires valid ANTHROPIC_API_KEY"
-    )
     @pytest.mark.asyncio
     async def test_complete_workflow_with_chat(
-        self, 
-        client: AsyncClient, 
+        self,
+        client: AsyncClient,
         sync_client: TestClient
     ):
-        """Test complete workflow including chat (steps 1-9)."""
-        # Steps 1-5: REST API workflow
-        health_response = await client.get("/health")
-        assert health_response.status_code == 200
-        
-        repos_response = await client.get("/api/repos")
-        assert repos_response.status_code == 200
-        
-        tree_response = await client.get("/api/repos/frontend-app/tree")
-        assert tree_response.status_code == 200
-        
-        file_response = await client.get("/api/repos/frontend-app/files/README.md")
-        assert file_response.status_code == 200
-        
-        conv_response = await client.post("/api/conversations")
-        assert conv_response.status_code == 200
-        conv_id = conv_response.json()["id"]
-        
-        # Step 6: Ask about repositories via WebSocket
-        with sync_client.websocket_connect(f"/ws/chat/{conv_id}") as websocket:
-            websocket.send_json({
-                "type": "message",
-                "content": "What repositories do you have?"
-            })
-            
-            tool_executed = False
-            done = False
-            
-            while not done:
-                response = websocket.receive_json()
-                
-                if response["type"] == "tool_use_start":
-                    if response["name"] == "list_repositories":
-                        tool_executed = True
-                
-                elif response["type"] == "done":
-                    done = True
-                
-                elif response["type"] == "error":
-                    pytest.fail(f"Error in step 6: {response['message']}")
-            
-            assert tool_executed, "list_repositories tool should have been executed"
-        
-        # Step 7: Ask about specific repo
-        with sync_client.websocket_connect(f"/ws/chat/{conv_id}") as websocket:
-            websocket.send_json({
-                "type": "message",
-                "content": "Tell me about frontend-app"
-            })
-            
-            text_received = False
-            done = False
-            
-            while not done:
-                response = websocket.receive_json()
-                
-                if response["type"] == "text":
-                    text_received = True
-                
-                elif response["type"] == "done":
-                    done = True
-                
-                elif response["type"] == "error":
-                    pytest.fail(f"Error in step 7: {response['message']}")
-            
-            assert text_received, "Should have received text response"
-        
-        # Step 8: Ask for specific doc
-        with sync_client.websocket_connect(f"/ws/chat/{conv_id}") as websocket:
-            websocket.send_json({
-                "type": "message",
-                "content": "Show me the setup guide for frontend-app"
-            })
-            
-            done = False
-            
-            while not done:
-                response = websocket.receive_json()
-                
-                if response["type"] == "done":
-                    done = True
-                
-                elif response["type"] == "error":
-                    pytest.fail(f"Error in step 8: {response['message']}")
-        
-        # Step 9: Check conversation history
-        history_response = await client.get(f"/api/conversations/{conv_id}/messages")
-        assert history_response.status_code == 200
-        
-        messages = history_response.json()
-        assert len(messages) >= 6  # At least 3 user + 3 assistant messages
-        
-        # Verify message structure
-        user_messages = [m for m in messages if m["role"] == "user"]
-        assistant_messages = [m for m in messages if m["role"] == "assistant"]
-        
-        assert len(user_messages) == 3
-        assert len(assistant_messages) == 3
-        
-        # Verify conversation context is maintained
-        assert any("repository" in m["content"].lower() for m in user_messages)
-        assert any("frontend-app" in m["content"].lower() for m in user_messages)
+        """Test complete workflow including chat (steps 1-9) - mocked LLM."""
+        from unittest.mock import patch
+
+        # Mock LLM for different chat interactions
+        call_count = [0]
+
+        async def mock_workflow_stream(messages, context=None):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                # First call: list repositories
+                yield {"type": "tool_use_start", "toolId": "t1", "name": "list_repositories", "input": {}}
+                yield {"type": "tool_result", "toolId": "t1", "name": "list_repositories", "result": [], "duration": 10}
+                yield {"type": "text", "content": "We have repos"}
+            elif call_count[0] == 2:
+                # Second call: about frontend-app
+                yield {"type": "text", "content": "Frontend-app is a React app"}
+            else:
+                # Third call: setup guide
+                yield {"type": "text", "content": "Here's the setup guide"}
+
+        with patch("app.main.llm_client.chat_stream", side_effect=mock_workflow_stream):
+            # Steps 1-5: REST API workflow
+            health_response = await client.get("/health")
+            assert health_response.status_code == 200
+
+            repos_response = await client.get("/api/repos")
+            assert repos_response.status_code == 200
+
+            tree_response = await client.get("/api/repos/frontend-app/tree")
+            assert tree_response.status_code == 200
+
+            file_response = await client.get("/api/repos/frontend-app/files/README.md")
+            assert file_response.status_code == 200
+
+            conv_response = await client.post("/api/conversations")
+            assert conv_response.status_code == 200
+            conv_id = conv_response.json()["id"]
+
+            # Step 6: Ask about repositories via WebSocket
+            with sync_client.websocket_connect(f"/ws/chat/{conv_id}") as websocket:
+                websocket.send_json({
+                    "type": "message",
+                    "content": "What repositories do you have?"
+                })
+
+                tool_executed = False
+                done = False
+
+                while not done:
+                    response = websocket.receive_json()
+
+                    if response["type"] == "tool_use_start":
+                        if response["name"] == "list_repositories":
+                            tool_executed = True
+
+                    elif response["type"] == "done":
+                        done = True
+
+                    elif response["type"] == "error":
+                        pytest.fail(f"Error in step 6: {response['message']}")
+
+                assert tool_executed, "list_repositories tool should have been executed"
+
+            # Step 7: Ask about specific repo
+            with sync_client.websocket_connect(f"/ws/chat/{conv_id}") as websocket:
+                websocket.send_json({
+                    "type": "message",
+                    "content": "Tell me about frontend-app"
+                })
+
+                text_received = False
+                done = False
+
+                while not done:
+                    response = websocket.receive_json()
+
+                    if response["type"] == "text":
+                        text_received = True
+
+                    elif response["type"] == "done":
+                        done = True
+
+                    elif response["type"] == "error":
+                        pytest.fail(f"Error in step 7: {response['message']}")
+
+                assert text_received, "Should have received text response"
+
+            # Step 8: Ask for specific doc
+            with sync_client.websocket_connect(f"/ws/chat/{conv_id}") as websocket:
+                websocket.send_json({
+                    "type": "message",
+                    "content": "Show me the setup guide for frontend-app"
+                })
+
+                done = False
+
+                while not done:
+                    response = websocket.receive_json()
+
+                    if response["type"] == "done":
+                        done = True
+
+                    elif response["type"] == "error":
+                        pytest.fail(f"Error in step 8: {response['message']}")
+
+            # Step 9: Check conversation history
+            history_response = await client.get(f"/api/conversations/{conv_id}/messages")
+            assert history_response.status_code == 200
+
+            messages = history_response.json()
+            assert len(messages) >= 6  # At least 3 user + 3 assistant messages
+
+            # Verify message structure
+            user_messages = [m for m in messages if m["role"] == "user"]
+            assistant_messages = [m for m in messages if m["role"] == "assistant"]
+
+            assert len(user_messages) == 3
+            assert len(assistant_messages) == 3
+
+            # Verify conversation context is maintained
+            assert any("repositor" in m["content"].lower() for m in user_messages)  # matches "repositories"
+            assert any("frontend" in m["content"].lower() for m in user_messages)
 
 
 class TestDataFlowIntegrity:
@@ -177,7 +193,9 @@ class TestDataFlowIntegrity:
         """Test that data is consistent across different endpoints."""
         # Get repos
         repos_response = await client.get("/api/repos")
+        assert repos_response.status_code == 200, f"Failed to get repos: {repos_response.status_code} {repos_response.text}"
         repos = repos_response.json()
+        assert isinstance(repos, list), f"Expected list but got {type(repos)}: {repos}"
         frontend_repo = next(r for r in repos if r["name"] == "frontend-app")
         
         # Get tree for the same repo

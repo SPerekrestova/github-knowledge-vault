@@ -1,6 +1,3 @@
-"""
-MCP Client - Simple HTTP client for MCP Server communication.
-"""
 import httpx
 from typing import Any, Optional
 from app.config import settings
@@ -31,7 +28,11 @@ class MCPClient:
     async def disconnect(self) -> None:
         """Close HTTP client."""
         if self._client:
-            await self._client.aclose()
+            try:
+                await self._client.aclose()
+            except (RuntimeError, Exception):
+                # Ignore errors during shutdown (e.g., event loop already closed)
+                pass
             self._client = None
         self._connected = False
 

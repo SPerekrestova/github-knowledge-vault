@@ -1,12 +1,12 @@
 # GitHub Knowledge Vault - Backend
 
-FastAPI backend for the GitHub Knowledge Vault project. Provides AI-powered documentation search and chat capabilities using Claude and the Model Context Protocol (MCP).
+FastAPI backend for the GitHub Knowledge Vault project. Provides AI-powered documentation search and chat capabilities using AI and the Model Context Protocol (MCP).
 
 ## Features
 
 - **REST API** - Browse repositories and retrieve documentation
-- **WebSocket Chat** - Real-time conversations with Claude about your documentation
-- **Streaming Responses** - See Claude's responses in real-time as they're generated
+- **WebSocket Chat** - Real-time conversations with AI about your documentation
+- **Streaming Responses** - See AI responses in real-time as they're generated
 - **Tool Execution** - Automatic integration with MCP server for documentation search
 - **Repository Context** - Scope conversations to specific repositories
 
@@ -17,7 +17,7 @@ FastAPI backend for the GitHub Knowledge Vault project. Provides AI-powered docu
 - Python 3.14+
 - [uv](https://docs.astral.sh/uv/) package manager
 - Anthropic API key
-- Running MCP server (optional for full functionality)
+- Running MCP server
 
 ## API Endpoints
 
@@ -33,7 +33,7 @@ FastAPI backend for the GitHub Knowledge Vault project. Provides AI-powered docu
 
 ### WebSocket Endpoint
 
-**`WS /ws/chat/{conversation_id}`** - Real-time chat with Claude
+**`WS /ws/chat/{conversation_id}`** - Real-time chat with AI
 
 **Client sends:**
 ```json
@@ -49,7 +49,7 @@ FastAPI backend for the GitHub Knowledge Vault project. Provides AI-powered docu
 
 ## Available Tools (MCP Integration)
 
-The backend provides Claude with these tools for documentation access:
+The backend provides AI with these tools for documentation access:
 
 1. **`list_repositories`** - List all available repositories
 2. **`search_documentation`** - Search across all documentation

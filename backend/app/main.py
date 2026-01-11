@@ -63,14 +63,20 @@ async def health_check() -> Dict[str, Any]:
 
     Returns:
         status: "healthy" | "degraded" | "unhealthy"
-        services: Status of MCP and Claude
+        services: Status of MCP and LLM
     """
     mcp_ok = mcp_client.is_connected
-    claude_ok = bool(settings.ANTHROPIC_API_KEY)
 
-    if mcp_ok and claude_ok:
+    # Check for valid API key for the configured provider
+    try:
+        api_key = settings.OPENROUTER_API_KEY
+        llm_ok = bool(api_key)
+    except ValueError:
+        llm_ok = False
+
+    if mcp_ok and llm_ok:
         status = "healthy"
-    elif claude_ok:  # Claude works, MCP down
+    elif llm_ok:  # LLM works, MCP down
         status = "degraded"
     else:
         status = "unhealthy"
@@ -82,9 +88,10 @@ async def health_check() -> Dict[str, Any]:
             "mcp_server": {
                 "status": "connected" if mcp_ok else "disconnected"
             },
-            "claude_api": {
-                "status": "available" if claude_ok else "unavailable",
-                "model": settings.CLAUDE_MODEL
+            "llm_api": {
+                "status": "available" if llm_ok else "unavailable",
+                "provider": "openrouter",
+                "model": settings.MODEL_NAME
             }
         }
     }

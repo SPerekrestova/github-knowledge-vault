@@ -1,26 +1,23 @@
 """Pytest configuration and fixtures for tests."""
+import os
 import pytest
-import asyncio
 import subprocess
 import time
 import signal
 from typing import AsyncGenerator
 from httpx import AsyncClient, ASGITransport
+
+# Set test environment variables BEFORE importing app modules
+os.environ["MCP_SERVER_URL"] = "http://localhost:3002"
+os.environ["OPENROUTER_API_KEY"] = "test-key-12345"
+
+# Now import app modules - they will use the test environment variables
 from app.main import app
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest.fixture(scope="session", autouse=True)
 def mock_mcp_server():
     """Start mock MCP server for tests."""
-    import os
     from pathlib import Path
 
     # Start mock MCP server from tests directory
@@ -54,9 +51,9 @@ async def client(mock_mcp_server) -> AsyncGenerator[AsyncClient, None]:
     """Create an async HTTP client for testing."""
     from app.mcp import mcp_client
 
-    # Ensure MCP client connects to mock server
-    if not mcp_client.is_connected:
-        await mcp_client.connect()
+    # Disconnect and reconnect to ensure fresh event loop
+    await mcp_client.disconnect()
+    await mcp_client.connect()
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
