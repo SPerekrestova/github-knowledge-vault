@@ -1,17 +1,23 @@
 """Pytest configuration and fixtures for tests."""
+import os
 import pytest
 import subprocess
 import time
 import signal
 from typing import AsyncGenerator
 from httpx import AsyncClient, ASGITransport
+
+# Set test environment variables BEFORE importing app modules
+os.environ["MCP_SERVER_URL"] = "http://localhost:3002"
+os.environ["OPENROUTER_API_KEY"] = "test-key-12345"
+
+# Now import app modules - they will use the test environment variables
 from app.main import app
 
 
 @pytest.fixture(scope="session", autouse=True)
 def mock_mcp_server():
     """Start mock MCP server for tests."""
-    import os
     from pathlib import Path
 
     # Start mock MCP server from tests directory

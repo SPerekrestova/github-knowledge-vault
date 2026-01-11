@@ -90,6 +90,7 @@ async def health_check() -> Dict[str, Any]:
             },
             "llm_api": {
                 "status": "available" if llm_ok else "unavailable",
+                "provider": "openrouter",
                 "model": settings.MODEL_NAME
             }
         }
