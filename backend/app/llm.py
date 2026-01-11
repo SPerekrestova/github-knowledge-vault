@@ -121,22 +121,10 @@ class LLMClient:
     """Multi-provider LLM client with streaming and tool execution."""
 
     def __init__(self):
-        self.provider = settings.LLM_PROVIDER
-        self.model = settings.effective_model
+        self.model = settings.MODEL_NAME
         self.max_tokens = settings.MAX_TOKENS
-
-        # Set API key and base URL based on provider
-        if settings.LLM_PROVIDER == "openrouter":
-            self.api_key = settings.OPENROUTER_API_KEY
-            self.api_base = "https://openrouter.ai/api/v1"
-        elif settings.LLM_PROVIDER == "anthropic":
-            self.api_key = settings.ANTHROPIC_API_KEY
-            self.api_base = None  # litellm handles Anthropic's base URL
-        else:
-            self.api_key = settings.effective_api_key
-            self.api_base = None
-
-        logger.info(f"LLM Client initialized: provider={self.provider}, model={self.model}")
+        self.api_key = settings.OPENROUTER_API_KEY
+        self.api_base = settings.API_BASE
 
     async def chat_stream(
         self,
@@ -182,11 +170,9 @@ class LLMClient:
                     api_key=self.api_key,
                     api_base=self.api_base,
                     max_tokens=self.max_tokens,
-                    # OpenRouter-specific headers
                     extra_headers={
-                        "HTTP-Referer": "https://github.com/your-org/knowledge-vault",
                         "X-Title": "GitHub Knowledge Vault"
-                    } if self.provider == "openrouter" else None
+                    }
                 )
 
                 finish_reason = None

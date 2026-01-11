@@ -69,7 +69,7 @@ async def health_check() -> Dict[str, Any]:
 
     # Check for valid API key for the configured provider
     try:
-        api_key = settings.effective_api_key
+        api_key = settings.OPENROUTER_API_KEY
         llm_ok = bool(api_key)
     except ValueError:
         llm_ok = False
@@ -90,8 +90,7 @@ async def health_check() -> Dict[str, Any]:
             },
             "llm_api": {
                 "status": "available" if llm_ok else "unavailable",
-                "provider": settings.LLM_PROVIDER,
-                "model": settings.effective_model
+                "model": settings.MODEL_NAME
             }
         }
     }

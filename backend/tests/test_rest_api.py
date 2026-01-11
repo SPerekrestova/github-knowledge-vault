@@ -17,8 +17,9 @@ class TestHealthEndpoint:
         assert data["status"] == "healthy"
         assert data["version"] == "1.0.0"
         assert data["services"]["mcp_server"]["status"] == "connected"
-        assert data["services"]["claude_api"]["status"] == "available"
-        assert data["services"]["claude_api"]["model"] == "claude-sonnet-4-20250514"
+        assert data["services"]["llm_api"]["status"] == "available"
+        assert data["services"]["llm_api"]["provider"] == "openrouter"
+        assert data["services"]["llm_api"]["model"] == "openrouter/meta-llama/llama-3.3-70b-instruct"
 
 
 class TestRepositoryEndpoints:

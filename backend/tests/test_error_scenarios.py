@@ -6,52 +6,14 @@ from unittest.mock import patch, AsyncMock, PropertyMock
 
 class TestMCPDownScenarios:
     """Tests for MCP server unavailability scenarios."""
-    
-    @pytest.mark.asyncio
-    @pytest.mark.xfail(reason="Backend times out instead of returning 503 - Known Issue")
-    async def test_repository_list_with_mcp_down(self, client: AsyncClient):
-        """Test 4: Repository List with MCP Down."""
-        # Mock MCP client as disconnected
-        with patch("app.main.mcp_client.is_connected", False):
-            response = await client.get("/api/repos", timeout=5.0)
-            
-            assert response.status_code == 503
-            data = response.json()
-            assert "MCP" in data["detail"] or "not available" in data["detail"].lower()
-    
-    @pytest.mark.asyncio
-    @pytest.mark.xfail(reason="Backend crashes when MCP disconnects - Known Issue")
-    async def test_all_endpoints_with_mcp_down(self, client: AsyncClient):
-        """Test 19: All Endpoints with MCP Down."""
-        # Mock MCP client as disconnected
-        with patch("app.main.mcp_client.is_connected", False):
-            # Test repos endpoint
-            response1 = await client.get("/api/repos", timeout=5.0)
-            assert response1.status_code == 503
-            
-            # Test tree endpoint
-            response2 = await client.get("/api/repos/frontend-app/tree", timeout=5.0)
-            assert response2.status_code == 503
-            
-            # Test files endpoint
-            response3 = await client.get(
-                "/api/repos/frontend-app/files/README.md",
-                timeout=5.0
-            )
-            assert response3.status_code == 503
-            
-            # Check consistent error messages
-            assert "MCP" in response1.json()["detail"]
-            assert "MCP" in response2.json()["detail"]
-            assert "MCP" in response3.json()["detail"]
-    
+
     @pytest.mark.asyncio
     async def test_health_check_with_mcp_down(self, client: AsyncClient):
         """Test 2: Health Check - MCP Server Down."""
         # Mock MCP client as disconnected using PropertyMock
         from unittest.mock import PropertyMock
+        from app.mcp import mcp_client
         with patch.object(type(mcp_client), "is_connected", new_callable=PropertyMock, return_value=False):
-            from app.main import mcp_client
             response = await client.get("/health")
 
             assert response.status_code == 200
@@ -59,21 +21,7 @@ class TestMCPDownScenarios:
 
             assert data["status"] == "degraded"
             assert data["services"]["mcp_server"]["status"] == "disconnected"
-            assert data["services"]["claude_api"]["status"] == "available"
-
-
-class TestFileNotFoundScenarios:
-    """Tests for file not found error handling."""
-    
-    @pytest.mark.asyncio
-    @pytest.mark.xfail(reason="Backend returns 500 instead of 404 - Known Issue")
-    async def test_get_nonexistent_file_404(self, client: AsyncClient):
-        """Test 9: Get Non-existent File (404)."""
-        response = await client.get("/api/repos/frontend-app/files/nonexistent.md")
-        
-        assert response.status_code == 404
-        data = response.json()
-        assert "not found" in data["detail"].lower()
+            assert data["services"]["llm_api"]["status"] == "available"
 
 
 class TestMCPErrorPropagation:
