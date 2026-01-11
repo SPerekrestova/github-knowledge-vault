@@ -1,74 +1,88 @@
 """
-LLM Client - Claude API with streaming and tool execution.
+LLM Client - Multi-provider support via litellm with OpenRouter integration.
 """
-from anthropic import AsyncAnthropic
-from typing import AsyncGenerator, Optional, List
+from litellm import acompletion
+from typing import AsyncGenerator, Optional, List, Dict, Any
 import json
 import time
+import logging
 
 from app.config import settings
 from app.mcp import mcp_client
 
+logger = logging.getLogger(__name__)
 
-# Tool definitions for Claude
+# Tool definitions in OpenAI format (required by litellm)
 TOOLS = [
     {
-        "name": "list_repositories",
-        "description": "List all available repositories in the organization with their documentation counts.",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": []
+        "type": "function",
+        "function": {
+            "name": "list_repositories",
+            "description": "List all available repositories in the organization with their documentation counts.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
         }
     },
     {
-        "name": "search_documentation",
-        "description": "Search across all documentation. Returns matching documents with snippets.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "Search query string"
+        "type": "function",
+        "function": {
+            "name": "search_documentation",
+            "description": "Search across all documentation. Returns matching documents with snippets.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query string"
+                    },
+                    "repo": {
+                        "type": "string",
+                        "description": "Optional: Limit search to specific repository"
+                    }
                 },
-                "repo": {
-                    "type": "string",
-                    "description": "Optional: Limit search to specific repository"
-                }
-            },
-            "required": ["query"]
+                "required": ["query"]
+            }
         }
     },
     {
-        "name": "get_documentation",
-        "description": "Retrieve the full content of a specific documentation file.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "repo": {
-                    "type": "string",
-                    "description": "Repository name"
+        "type": "function",
+        "function": {
+            "name": "get_documentation",
+            "description": "Retrieve the full content of a specific documentation file.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "repo": {
+                        "type": "string",
+                        "description": "Repository name"
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "File path within the repository"
+                    }
                 },
-                "path": {
-                    "type": "string",
-                    "description": "File path within the repository"
-                }
-            },
-            "required": ["repo", "path"]
+                "required": ["repo", "path"]
+            }
         }
     },
     {
-        "name": "list_repo_docs",
-        "description": "List all documentation files in a specific repository.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "repo": {
-                    "type": "string",
-                    "description": "Repository name"
-                }
-            },
-            "required": ["repo"]
+        "type": "function",
+        "function": {
+            "name": "list_repo_docs",
+            "description": "List all documentation files in a specific repository.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "repo": {
+                        "type": "string",
+                        "description": "Repository name"
+                    }
+                },
+                "required": ["repo"]
+            }
         }
     }
 ]
@@ -76,7 +90,6 @@ TOOLS = [
 
 def build_system_prompt(context: Optional[dict] = None) -> str:
     """Build system prompt with optional repo context."""
-
     base = """You are a helpful documentation assistant for a GitHub organization.
 
 You have access to tools to search and retrieve documentation:
@@ -105,12 +118,25 @@ When searching for documentation:
 
 
 class LLMClient:
-    """Claude API client with streaming and tool execution."""
+    """Multi-provider LLM client with streaming and tool execution."""
 
     def __init__(self):
-        self.client = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
-        self.model = settings.CLAUDE_MODEL
-        self.max_tokens = settings.CLAUDE_MAX_TOKENS
+        self.provider = settings.LLM_PROVIDER
+        self.model = settings.effective_model
+        self.max_tokens = settings.MAX_TOKENS
+
+        # Set API key and base URL based on provider
+        if settings.LLM_PROVIDER == "openrouter":
+            self.api_key = settings.OPENROUTER_API_KEY
+            self.api_base = "https://openrouter.ai/api/v1"
+        elif settings.LLM_PROVIDER == "anthropic":
+            self.api_key = settings.ANTHROPIC_API_KEY
+            self.api_base = None  # litellm handles Anthropic's base URL
+        else:
+            self.api_key = settings.effective_api_key
+            self.api_base = None
+
+        logger.info(f"LLM Client initialized: provider={self.provider}, model={self.model}")
 
     async def chat_stream(
         self,
@@ -118,129 +144,181 @@ class LLMClient:
         context: Optional[dict] = None
     ) -> AsyncGenerator[dict, None]:
         """
-        Stream chat response from Claude with tool execution.
+        Stream chat response from LLM with tool execution.
 
         Args:
             messages: Conversation history [{"role": "user/assistant", "content": "..."}]
             context: Optional context {"scope": "repo", "repoName": "..."}
 
         Yields:
-            Events:
+            Events (maintains backward compatibility):
             - {"type": "text", "content": "..."}
             - {"type": "tool_use_start", "toolId": "...", "name": "...", "input": {...}}
             - {"type": "tool_result", "toolId": "...", "name": "...", "result": {...}, "duration": 123}
         """
         system_prompt = build_system_prompt(context)
 
-        # Initial Claude request
-        current_messages = list(messages)
+        # Convert messages to OpenAI format (system as first message if needed)
+        formatted_messages = [{"role": "system", "content": system_prompt}] + messages
 
-        while True:
-            # Collect full response for potential continuation
-            assistant_content = []
-            tool_use_block = None
-            tool_input_json = ""
+        current_messages = formatted_messages
+        max_iterations = 10  # Prevent infinite loops
+        iteration = 0
 
-            async with self.client.messages.stream(
-                model=self.model,
-                max_tokens=self.max_tokens,
-                system=system_prompt,
-                messages=current_messages,
-                tools=TOOLS,
-            ) as stream:
+        while iteration < max_iterations:
+            iteration += 1
 
-                async for event in stream:
+            # Track tool calls for this iteration
+            pending_tool_calls = []
+            accumulated_text = ""
 
-                    if event.type == "content_block_start":
-                        if event.content_block.type == "tool_use":
-                            tool_use_block = {
-                                "id": event.content_block.id,
-                                "name": event.content_block.name,
-                            }
-                            tool_input_json = ""
-                            yield {
-                                "type": "tool_use_start",
-                                "toolId": event.content_block.id,
-                                "name": event.content_block.name,
-                                "input": {}
-                            }
+            try:
+                # Make streaming request
+                response = await acompletion(
+                    model=self.model,
+                    messages=current_messages,
+                    tools=TOOLS,
+                    stream=True,
+                    api_key=self.api_key,
+                    api_base=self.api_base,
+                    max_tokens=self.max_tokens,
+                    # OpenRouter-specific headers
+                    extra_headers={
+                        "HTTP-Referer": "https://github.com/your-org/knowledge-vault",
+                        "X-Title": "GitHub Knowledge Vault"
+                    } if self.provider == "openrouter" else None
+                )
 
-                    elif event.type == "content_block_delta":
-                        if hasattr(event.delta, "text"):
-                            yield {"type": "text", "content": event.delta.text}
-                        elif hasattr(event.delta, "partial_json"):
-                            tool_input_json += event.delta.partial_json
+                finish_reason = None
 
-                    elif event.type == "content_block_stop":
-                        if tool_use_block:
-                            # Parse accumulated JSON and execute tool
-                            try:
-                                tool_input = json.loads(tool_input_json) if tool_input_json else {}
-                            except json.JSONDecodeError:
-                                tool_input = {}
+                # Stream chunks
+                async for chunk in response:
+                    if not chunk or not chunk.choices:
+                        continue
 
-                            # Execute the tool
-                            start_time = time.time()
-                            try:
-                                result = await mcp_client.call_tool(
-                                    tool_use_block["name"],
-                                    tool_input
-                                )
-                            except Exception as e:
-                                result = {"error": str(e)}
+                    choice = chunk.choices[0]
+                    delta = choice.delta if hasattr(choice, 'delta') else None
 
-                            duration = int((time.time() - start_time) * 1000)
+                    if not delta:
+                        continue
 
-                            yield {
-                                "type": "tool_result",
-                                "toolId": tool_use_block["id"],
-                                "name": tool_use_block["name"],
-                                "result": result,
-                                "duration": duration
-                            }
+                    # Handle text content
+                    if hasattr(delta, 'content') and delta.content:
+                        accumulated_text += delta.content
+                        yield {"type": "text", "content": delta.content}
 
-                            # Store for continuation
-                            assistant_content.append({
-                                "type": "tool_use",
-                                "id": tool_use_block["id"],
-                                "name": tool_use_block["name"],
-                                "input": tool_input
-                            })
+                    # Handle tool calls
+                    if hasattr(delta, 'tool_calls') and delta.tool_calls:
+                        for tool_call in delta.tool_calls:
+                            tool_id = tool_call.id if hasattr(tool_call, 'id') else f"call_{int(time.time() * 1000)}"
 
-                            tool_use_block = None
-                            tool_input_json = ""
+                            # Check if this is a new tool call or continuation
+                            existing = next(
+                                (tc for tc in pending_tool_calls if tc.get('id') == tool_id),
+                                None
+                            )
 
-                # Get final message to check stop reason
-                final_message = await stream.get_final_message()
+                            if not existing:
+                                # New tool call
+                                tool_name = tool_call.function.name if hasattr(tool_call.function, 'name') else ""
+                                pending_tool_calls.append({
+                                    'id': tool_id,
+                                    'name': tool_name,
+                                    'arguments': tool_call.function.arguments if hasattr(tool_call.function, 'arguments') else ""
+                                })
 
-            # Check if we need to continue (tool_use stop reason)
-            if final_message.stop_reason == "tool_use":
-                # Build tool results for continuation
-                tool_results = []
-                for block in final_message.content:
-                    if block.type == "tool_use":
-                        # Find the result we already computed
+                                yield {
+                                    "type": "tool_use_start",
+                                    "toolId": tool_id,
+                                    "name": tool_name,
+                                    "input": {}
+                                }
+                            else:
+                                # Accumulate arguments
+                                if hasattr(tool_call.function, 'arguments'):
+                                    existing['arguments'] += tool_call.function.arguments
+
+                    # Check finish reason
+                    if hasattr(choice, 'finish_reason') and choice.finish_reason:
+                        finish_reason = choice.finish_reason
+
+                # Process tool calls if any
+                if pending_tool_calls:
+                    tool_results = []
+
+                    for tool_call in pending_tool_calls:
+                        # Parse arguments
                         try:
-                            result = await mcp_client.call_tool(block.name, block.input)
+                            tool_input = json.loads(tool_call['arguments']) if tool_call['arguments'] else {}
+                        except json.JSONDecodeError as e:
+                            logger.error(f"Failed to parse tool arguments: {e}")
+                            tool_input = {}
+
+                        # Execute tool
+                        start_time = time.time()
+                        try:
+                            result = await mcp_client.call_tool(
+                                tool_call['name'],
+                                tool_input
+                            )
                         except Exception as e:
+                            logger.error(f"Tool execution error: {e}")
                             result = {"error": str(e)}
 
-                        tool_results.append({
+                        duration = int((time.time() - start_time) * 1000)
+
+                        # Yield tool result event
+                        yield {
                             "type": "tool_result",
-                            "tool_use_id": block.id,
+                            "toolId": tool_call['id'],
+                            "name": tool_call['name'],
+                            "result": result,
+                            "duration": duration
+                        }
+
+                        # Build tool result message for continuation
+                        tool_results.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call['id'],
+                            "name": tool_call['name'],
                             "content": json.dumps(result) if isinstance(result, (dict, list)) else str(result)
                         })
 
-                # Update messages for next iteration
-                current_messages = current_messages + [
-                    {"role": "assistant", "content": final_message.content},
-                    {"role": "user", "content": tool_results}
-                ]
+                    # Add assistant message with tool calls
+                    assistant_message = {
+                        "role": "assistant",
+                        "content": accumulated_text or None,
+                        "tool_calls": [
+                            {
+                                "id": tc['id'],
+                                "type": "function",
+                                "function": {
+                                    "name": tc['name'],
+                                    "arguments": tc['arguments']
+                                }
+                            }
+                            for tc in pending_tool_calls
+                        ]
+                    }
 
-                # Continue the loop for Claude's response to tool results
-            else:
-                # Normal end (end_turn or max_tokens)
+                    # Continue conversation with tool results
+                    current_messages = current_messages + [assistant_message] + tool_results
+
+                    # Continue loop for next iteration
+                    continue
+
+                # No tool calls - conversation complete
+                if finish_reason in ("stop", "length", "end_turn"):
+                    break
+
+                # Unknown finish reason - break to avoid infinite loop
+                logger.warning(f"Unexpected finish reason: {finish_reason}")
                 break
+
+            except Exception as e:
+                logger.error(f"Streaming error: {e}")
+                # Don't yield error here - let WebSocket handler deal with it
+                raise
 
 
 # Singleton instance
