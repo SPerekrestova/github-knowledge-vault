@@ -15,8 +15,11 @@ class Settings(BaseSettings):
     API_BASE: str = "https://openrouter.ai/api/v1"
     MAX_TOKENS: int = 4096
 
-    MCP_SERVER_URL: str = "http://mcp-server:3000"
+    MCP_SERVER_URL: str = "https://sperva-github-mcp-server.hf.space"
     MCP_TIMEOUT: int = 30
+
+    # GitHub organization for MCP server
+    GITHUB_ORG: str = "lifter-ai"
 
     CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:3000"]
 

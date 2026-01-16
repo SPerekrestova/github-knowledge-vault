@@ -12,13 +12,48 @@ from app.mcp import mcp_client
 
 logger = logging.getLogger(__name__)
 
+
+def map_tool_call(tool_name: str, tool_input: dict) -> tuple[str, dict]:
+    """
+    Map LLM tool calls to MCP server tool names and parameters.
+
+    The LLM uses simplified tool names, but the MCP server expects
+    specific tool names with the 'org' parameter included.
+
+    Args:
+        tool_name: Tool name from LLM (e.g., 'list_repositories')
+        tool_input: Tool arguments from LLM
+
+    Returns:
+        Tuple of (mcp_tool_name, mcp_arguments)
+    """
+    org = settings.GITHUB_ORG
+
+    # Map LLM tool names to MCP tool names
+    tool_mapping = {
+        "list_repositories": "get_org_repos_tool",
+        "search_documentation": "search_documentation_tool",
+        "get_documentation": "get_file_content_tool",
+        "list_repo_docs": "get_repo_docs_tool"
+    }
+
+    mcp_tool_name = tool_mapping.get(tool_name, tool_name)
+
+    # Add org parameter to all tool calls
+    mcp_arguments = {"org": org, **tool_input}
+
+    logger.debug(f"Mapped {tool_name} -> {mcp_tool_name} with args: {mcp_arguments}")
+
+    return mcp_tool_name, mcp_arguments
+
 # Tool definitions in OpenAI format (required by litellm)
+# These tool names and parameters match the MCP server's actual tools
 TOOLS = [
     {
         "type": "function",
         "function": {
             "name": "list_repositories",
-            "description": "List all available repositories in the organization with their documentation counts.",
+            "description": "List all available repositories in the organization with their documentation counts. Searches for repositories that have a /doc folder.",
             "parameters": {
                 "type": "object",
                 "properties": {},
@@ -30,17 +65,13 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "search_documentation",
-            "description": "Search across all documentation. Returns matching documents with snippets.",
+            "description": "Search across documentation in all repositories using GitHub Code Search API. Returns matching files in /doc folders.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "Search query string"
-                    },
-                    "repo": {
-                        "type": "string",
-                        "description": "Optional: Limit search to specific repository"
+                        "description": "Search query string (e.g., 'authentication', 'API', 'streaming')"
                     }
                 },
                 "required": ["query"]
@@ -51,17 +82,17 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "get_documentation",
-            "description": "Retrieve the full content of a specific documentation file.",
+            "description": "Retrieve the full content of a specific documentation file from a repository.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "repo": {
                         "type": "string",
-                        "description": "Repository name"
+                        "description": "Repository name (not full path, just the repo name)"
                     },
                     "path": {
                         "type": "string",
-                        "description": "File path within the repository"
+                        "description": "File path within the repository (e.g., 'doc/README.md')"
                     }
                 },
                 "required": ["repo", "path"]
@@ -72,13 +103,13 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "list_repo_docs",
-            "description": "List all documentation files in a specific repository.",
+            "description": "List all documentation files in a specific repository's /doc folder. Filters for supported types: Markdown, Mermaid, SVG, OpenAPI, Postman.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "repo": {
                         "type": "string",
-                        "description": "Repository name"
+                        "description": "Repository name (not full path, just the repo name)"
                     }
                 },
                 "required": ["repo"]
@@ -240,12 +271,18 @@ class LLMClient:
                             logger.error(f"Failed to parse tool arguments: {e}")
                             tool_input = {}
 
-                        # Execute tool
+                        # Map LLM tool call to MCP tool call
+                        mcp_tool_name, mcp_arguments = map_tool_call(
+                            tool_call['name'],
+                            tool_input
+                        )
+
+                        # Execute tool on MCP server
                         start_time = time.time()
                         try:
                             result = await mcp_client.call_tool(
-                                tool_call['name'],
-                                tool_input
+                                mcp_tool_name,
+                                mcp_arguments
                             )
                         except Exception as e:
                             logger.error(f"Tool execution error: {e}")
